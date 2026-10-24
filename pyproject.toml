@@ -16,6 +16,7 @@ dependencies = [
   "pydantic>=2.10",
   "pillow>=11.0",
   "cryptography>=43",
+  "pypdfium2>=4.30",
 ]
 
 [project.optional-dependencies]

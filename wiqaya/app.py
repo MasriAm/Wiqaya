@@ -16,8 +16,9 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
-from wiqaya import __version__, labels, off
+from wiqaya import __version__, labels, menus, off
 from wiqaya.config import SETTINGS
 from wiqaya.gemma import Gemma, GemmaError
 from wiqaya.images import BadImage, b64, clean
@@ -98,14 +99,15 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
                 raise HTTPException(400, "not_an_image") from e
         hints = ((hints or []) + [""] * len(images))[: len(images)]
         try:
-            readings = [labels.read(g(), img, hint) for img, hint in zip(images, hints)]
+            # Gemma and the network run in a worker thread: the server keeps answering the family relay meanwhile
+            readings = [await run_in_threadpool(labels.read, g(), img, hint) for img, hint in zip(images, hints)]
         except GemmaError as e:
             raise HTTPException(503, "gemma_unavailable") from e
         original, sticker, name, brand = labels.arrange([(r, h) for (r, _), h in zip(readings, hints)])
         pairs = None
         if original and sticker:
             try:
-                pairs, _ = labels.pair(g(), original, sticker)
+                pairs, _ = await run_in_threadpool(labels.pair, g(), original, sticker)
             except GemmaError:
                 pairs = None  # the engine says "not compared" (amber)
         facts = {"barcode": None, "name": name, "brand": brand, "label": original, "sticker": sticker,
@@ -113,7 +115,7 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
         if barcode and off.valid_barcode(barcode):
             facts["barcode"] = barcode
             try:
-                p = off.fetch(barcode, the_cache())
+                p = await run_in_threadpool(off.fetch, barcode, the_cache())
             except (httpx.HTTPError, ValueError):
                 p = None
             if p:
@@ -126,6 +128,36 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
         facts["seconds"] = round(time.perf_counter() - t0, 1)
         return facts
 
+    @app.post("/api/menu")
+    async def menu(url: Annotated[str, Form()] = "", files: Annotated[list[UploadFile] | None, File()] = None) -> dict:
+        """A restaurant menu (a link, up to four photos, or a PDF) → its dishes and what each is usually made with.
+        Nothing about the family is sent; the phone matches the dishes against each person."""
+        t0 = time.perf_counter()
+        text, images = "", []
+        try:
+            if url.strip():
+                data, kind = await run_in_threadpool(menus.fetch, url.strip())
+                text, images = await run_in_threadpool(menus.parts_of, data, kind)
+            for f in (files or [])[: menus.MAX_PAGES]:
+                data = await f.read(SETTINGS.max_upload + 1)
+                if len(data) > SETTINGS.max_upload:
+                    raise menus.MenuError("too_large")
+                t, imgs = await run_in_threadpool(menus.parts_of, data, (f.content_type or "").lower())
+                text += ("\n" + t) if t else ""
+                images += imgs
+        except menus.MenuError as e:
+            raise HTTPException(400, e.code) from e
+        if not text.strip() and not images:
+            raise HTTPException(400, "nothing_to_read")
+        try:
+            out = await run_in_threadpool(menus.read, g(), text, images)
+        except GemmaError as e:
+            raise HTTPException(503, "gemma_unavailable") from e
+        if not out["dishes"]:
+            raise HTTPException(422, "no_dishes")
+        out["seconds"] = round(time.perf_counter() - t0, 1)
+        return out
+
     @app.post("/api/expiry")
     async def expiry(photo: Annotated[UploadFile, File()]) -> dict:
         """A photo of the epinephrine pen's box → the expiry date printed on it, for the reminder."""
@@ -137,7 +169,7 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
         except BadImage as e:
             raise HTTPException(400, "not_an_image") from e
         try:
-            return labels.expiry(g(), image)
+            return await run_in_threadpool(labels.expiry, g(), image)
         except GemmaError as e:
             raise HTTPException(503, "gemma_unavailable") from e
 

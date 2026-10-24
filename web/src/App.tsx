@@ -14,6 +14,7 @@ import { SafeList } from "./screens/SafeList.tsx";
 import { Care, type CareTab } from "./screens/Care.tsx";
 import { RequestScreen } from "./screens/Request.tsx";
 import { Privacy } from "./screens/Privacy.tsx";
+import { Menu } from "./screens/Menu.tsx";
 
 export type Route =
   | { name: "welcome" }
@@ -28,7 +29,8 @@ export type Route =
   | { name: "safe" }
   | { name: "care"; tab: CareTab; id?: string }
   | { name: "request"; id: string }
-  | { name: "privacy" };
+  | { name: "privacy" }
+  | { name: "menu"; id?: string };
 
 export interface Ctx {
   state: AppState;
@@ -128,6 +130,9 @@ export function App() {
       try {
         const before = stateRef.current;
         const { state: next, notices } = await pull(before);
+        // the state changed while the messages were on their way (a scan or menu came back): applying them now
+        // would undo that change. Leave it; the next tick fetches the same messages again from the old cursor.
+        if (stateRef.current !== before) return;
         if (next !== before) {
           // someone new joined: a parent's phone re-sends the profiles so they have them
           const newcomer = next.people.length > before.people.length;
@@ -249,11 +254,13 @@ function Screen({ route }: { route: Route }) {
       return <RequestScreen id={route.id} />;
     case "privacy":
       return <Privacy />;
+    case "menu":
+      return <Menu id={route.id} />;
   }
 }
 
 // ------------------------------------------------------------------------------------------------ the shell
-type NavItem = { route: Route; icon: string; label: Key; short: Key; match: Route["name"][] };
+type NavItem = { route: Route; icon: string; label: Key; short: Key; match: Route["name"][]; mobile?: false };
 // "Tell the cook" is the care screen's cook tab; emergency and child mode have no tab of their own
 const active = (n: NavItem, r: Route) => n.match.includes(r.name) && (r.name !== "care" || r.tab === "cook");
 const NAV: NavItem[] = [
@@ -261,7 +268,9 @@ const NAV: NavItem[] = [
   { route: { name: "scan" }, icon: "scan", label: "navScan", short: "navScanShort", match: ["scan"] },
   { route: { name: "family" }, icon: "family", label: "navFamily", short: "navFamilyShort", match: ["family", "member", "choose"] },
   { route: { name: "safe" }, icon: "list", label: "navSafe", short: "navSafe", match: ["safe"] },
-  { route: { name: "care", tab: "cook" }, icon: "cook", label: "navCook", short: "navCookShort", match: ["care"] },
+  { route: { name: "menu" }, icon: "menu", label: "navMenu", short: "navMenuShort", match: ["menu"] },
+  // on a phone the cook card is reached from the menu result and the overview
+  { route: { name: "care", tab: "cook" }, icon: "cook", label: "navCook", short: "navCookShort", match: ["care"], mobile: false },
 ];
 
 /** On a child's phone, the family page is their own allergies. */
@@ -371,7 +380,7 @@ function MobileNav({ route }: { route: Route }) {
   const { t, go, me } = useApp();
   return (
     <nav className="mobile-nav" aria-label={t("navLabel")}>
-      {NAV.map((n) => (
+      {NAV.filter((n) => n.mobile !== false).map((n) => (
         <button key={n.label} className={active(n, route) ? "active" : ""} aria-current={active(n, route) ? "page" : undefined} onClick={() => go(n.route, true)}>
           <Icon name={n.icon} />
           {t(navLabel(n, true, me))}

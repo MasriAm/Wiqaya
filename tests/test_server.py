@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from wiqaya import gemma, labels, off
+from wiqaya import gemma, labels, menus, off
 from wiqaya.app import create_app
 from wiqaya.images import BadImage, clean
 from wiqaya.relay import Relay, RelayError
@@ -16,8 +16,9 @@ from wiqaya.text import split_ingredients
 class FakeGemma:
     """Answers like Gemma would, and records every request so tests can check what Gemma was sent."""
 
-    def __init__(self, readings=None, pairs=None, findings=None, tool_calls=None, lines=None):
+    def __init__(self, readings=None, pairs=None, findings=None, tool_calls=None, lines=None, dishes=None):
         self.readings = list(readings or [])
+        self.dishes = dishes or []
         self.lines = lines or []
         self.pairs = pairs or []
         self.findings = findings or []
@@ -33,6 +34,8 @@ class FakeGemma:
         props = schema["properties"]
         if "labels" in props:
             return self.readings.pop(0), {}
+        if "dishes" in props:
+            return {"restaurant": "Beit Sitti", "language": "en", "dishes": self.dishes}, {}
         if "lines" in props:
             return {"lines": self.lines}, {}
         if "pairs" in props:
@@ -227,6 +230,35 @@ def test_gemma_only_ever_gets_product_data(client):
     sent = json.dumps(g.sent)
     for word in ("Sara", "allerg", "member", "profile", "latitude"):
         assert word.lower() not in sent.lower().replace("allergy checker", "")
+
+
+DISH = {"name": "Moutabal", "en": "Moutabal", "section": "Mezze", "description": "", "usual": ["aubergine", "tahini"]}
+
+
+def test_menu_from_a_photo_and_a_scanned_pdf(client):
+    g = FakeGemma(dishes=[DISH, {**DISH, "name": "moutabal"}, {**DISH, "name": ""}])
+    c = client(g)
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 400), "white").save(buf, format="PDF")
+    for name, data, kind in [("menu.png", png(), "image/png"), ("menu.pdf", buf.getvalue(), "application/pdf")]:
+        r = c.post("/api/menu", files=[("files", (name, data, kind))])
+        assert r.status_code == 200, r.text
+        # the same dish twice and an empty one are dropped
+        assert [d["name"] for d in r.json()["dishes"]] == ["Moutabal"]
+    # Gemma got the menu and nothing else
+    assert all(u.startswith("The menu") for u in g.sent)
+
+
+def test_menu_link_to_a_local_address_is_refused(client):
+    c = client(FakeGemma(dishes=[DISH]))
+    for url in ("http://127.0.0.1:8000/", "http://localhost/menu", "file:///etc/passwd", "http://192.168.1.1/"):
+        assert c.post("/api/menu", data={"url": url}).json()["error"] == "url_blocked", url
+    assert c.post("/api/menu").json()["error"] == "nothing_to_read"
+
+
+def test_menu_page_text():
+    page = "<html><head><title>x</title><script>var a=1</script></head><body><h2>Mezze</h2><p>Hummus &amp; bread</p></body>"
+    assert menus.page_text(page) == "Mezze\nHummus & bread"
 
 
 def test_relay_api(client):

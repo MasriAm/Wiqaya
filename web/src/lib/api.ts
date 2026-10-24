@@ -1,4 +1,5 @@
 // Calls to Wiqaya's server. Nothing here carries a name, an allergy profile or a location.
+import type { MenuFacts } from "../engine/menu.ts";
 import type { ProductFacts, Suspicion, TriggerId } from "../engine/types.ts";
 
 export class ApiError extends Error {
@@ -38,6 +39,13 @@ export const api = {
     });
     if (barcode) fd.append("barcode", barcode);
     return call<ProductFacts & { seconds: number }>("/api/scan", { method: "POST", body: fd });
+  },
+  /** A restaurant menu: a link, or photos / a PDF. Only the menu is sent. */
+  menu: (url: string, files: File[]) => {
+    const fd = new FormData();
+    if (url) fd.append("url", url);
+    files.forEach((f) => fd.append("files", f, f.name));
+    return call<MenuFacts & { seconds: number }>("/api/menu", { method: "POST", body: fd });
   },
   expiry: (photo: Blob) => {
     const fd = new FormData();

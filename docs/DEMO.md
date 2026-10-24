@@ -1,4 +1,4 @@
-# Demo (3 minutes)
+# Demo (about 4 minutes)
 
 **Set up before.** The laptop runs `uv run wiqaya serve --host 0.0.0.0 --https` (and `uv run wiqaya prefetch` once,
 so Jordan's products are cached if the Wi-Fi is slow). Three phones on the same Wi-Fi (or phones and a laptop
@@ -37,14 +37,18 @@ browser):
    ingredient (or a "may contain" line) that the Arabic sticker leaves out. Gemma read; the phone decided.
 6. **Safe list (10 s).** Safe list: Philadelphia, approved by Mum for Omar, tied to the exact recipe. If the
    ingredients change, it shows a recipe change alert and stops counting as approved.
-7. **Cook card and child mode (10 s).** Cook card: Sara's allergies with every hidden name, in Arabic and English,
+7. **Eating out (25 s).** "Where can we take the kids tonight?" Eating out → paste a restaurant's menu link (or a
+   photo of the menu). In about ten seconds: *12 good to ask for · 6 ask the staff first · 9 avoid*. Tabbouleh is
+   under Avoid for Omar (the menu says bulgur), knafeh too (wheat pastry); hummus is fine for both. Tap Sara to see
+   only Sara's view. Nothing is ever "safe" on a menu, so it ends with *Show the cook card*. Gemma saw the menu only.
+8. **Cook card and child mode (10 s).** Cook card: Sara's allergies with every hidden name, in Arabic and English,
    with *Read to the cook*. Child mode: a face and a voice that tell Sara, in Arabic and English, what a grown-up found on
    the last snack's label.
-8. **Emergency (20 s).** Tap **Emergency** → Sara: *Call 911 now* (use a teammate's number on stage), the doctor's
+9. **Emergency (20 s).** Tap **Emergency** → Sara: *Call 911 now* (use a teammate's number on stage), the doctor's
    plan word for word, *Show to paramedics* in Arabic or English, and the text to the family: "Sara may be having
    an allergic reaction. Last scanned: Nutella (not suitable) at 4:12 pm. Location: …". Wiqaya doesn't decide
    whether this is a reaction.
-9. **Trust (20 s).** "Gemma sees the label, never the child": `docs/PRIVACY.md`'s table and a captured Gemma request
+10. **Trust (20 s).** "Gemma sees the label, never the child": `docs/PRIVACY.md`'s table and a captured Gemma request
    (`bench/out/labels/gemma_requests.json`). The benchmark ([docs/RESULTS.md](RESULTS.md)): allergens caught, no
    false greens, cut-off photos never green. Open source, Gemma 4 on our own machine, Open Food Facts.
 
