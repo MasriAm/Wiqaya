@@ -243,10 +243,13 @@ def research(gemma: Gemma, ingredients: list[str], product_name: str | None = No
     user = ("Ingredients to check:\n" + "\n".join(f"- {i}" for i in ingredients)
             + (f"\n\n(They are from: {product_name})" if product_name else ""))
     history, log = gemma.run_tools(system, user, research_tools(), max_steps=6)
-    answer, _ = gemma.json(system, "Now give your findings for every ingredient listed, as JSON.", RESEARCH_SCHEMA,
-                           history=history, num_predict=1536)
-    seen_urls = {r.get("url") for call in log if isinstance(call.get("result"), list) for r in call["result"]
-                 if isinstance(r, dict)}
+    seen_urls = [r.get("url") for call in log if isinstance(call.get("result"), list) for r in call["result"]
+                 if isinstance(r, dict) and r.get("url")]
+    final = "Now give your findings for every ingredient listed, as JSON."
+    if seen_urls:
+        final += " In \"sources\", copy the exact URLs you relied on from these search results:\n" + "\n".join(
+            dict.fromkeys(seen_urls))
+    answer, _ = gemma.json(system, final, RESEARCH_SCHEMA, history=history, num_predict=1536)
     out = []
     for f in answer.get("findings") or []:
         triggers = [t for t in f.get("triggers") or [] if t in TRIGGERS]

@@ -277,7 +277,7 @@ function ReasonLine({ r, text }: { r: Reason; text: string }) {
     <li>
       {text}
       <div className="src">
-        {t(`src_${r.source}` as never)}
+        {t((r.source === "gemma" && !r.urls?.length ? "src_gemma_unsourced" : `src_${r.source}`) as never)}
         {r.why ? ` — ${r.why}` : ""}
         {r.urls?.length ? (
           <>
