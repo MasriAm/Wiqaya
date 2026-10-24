@@ -1,227 +1,149 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import allergens from "../engine/data/allergens.json" with { type: "json" };
-import jordan from "../engine/data/jordan.json" with { type: "json" };
-import { triggerName } from "../i18n.ts";
-import { inviteLink, newId } from "../lib/circle.ts";
+import { inviteLink } from "../lib/circle.ts";
 import { randomId } from "../lib/crypto.ts";
 import { blankProfile, type Profile } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
-import { Icon, Initial, Top } from "../ui.tsx";
-import { ProfileEditor, summary } from "./ProfileEditor.tsx";
+import { Avatar, Heading, Icon, Modal } from "../ui.tsx";
+import { MemberCard, ProfileEditor, validProfile } from "./ProfileEditor.tsx";
 
 export function Family() {
-  const { t, go, state, isParent, share } = useApp();
-  const lang = state.lang;
-  const productName = (barcode: string) => state.scans.find((s) => s.facts.barcode === barcode)?.facts.name ?? barcode;
+  const { t, go, state, isParent, invite } = useApp();
   return (
     <>
-      <Top title={t("family")} />
-      <main className="page">
-        <section className="card">
-          <h2>{t("membersTitle")}</h2>
-          <ul className="list">
-            {state.members.map((m) => (
-              <li key={m.id}>
-                <Initial name={m.name} />
-                <span className="grow">
-                  <strong>{m.name}</strong>
-                  <br />
-                  <span className="small muted">{summary(lang, m)}</span>
-                </span>
-                <button className="icon-btn" aria-label={`${t("cookCard")}: ${m.name}`} onClick={() => go({ name: "cook", id: m.id })}>
-                  <Icon name="card" />
-                </button>
-                {isParent && (
-                  <button className="btn ghost" onClick={() => go({ name: "member", id: m.id })}>
-                    {t("edit")}
-                  </button>
-                )}
-              </li>
+      <Heading
+        eyebrow={t("famEyebrow")}
+        title={t("famTitle")}
+        lead={t("famLead")}
+        extra={isParent && (
+          <button className="primary" onClick={() => go({ name: "member", id: "new" })}>
+            <Icon name="plus" /> {t("addMember")}
+          </button>
+        )}
+      />
+      <div className="stack">
+        {state.members.length === 0 ? (
+          <p className="big-card small-note">{t("waitingProfiles")}</p>
+        ) : (
+          <div className="family-row">
+            {state.members.map((m, i) => (
+              <MemberCard key={m.id} p={m} i={i} onClick={() => go(isParent ? { name: "member", id: m.id } : { name: "care", tab: "emergency", id: m.id })} />
             ))}
-          </ul>
-          {isParent && (
-            <button className="btn ghost" onClick={() => go({ name: "member", id: "new" })}>
-              <Icon name="plus" />
-              {t("addPerson")}
-            </button>
-          )}
+          </div>
+        )}
+
+        <section className="big-card">
+          <div className="row spread">
+            <h2 style={{ margin: 0 }}>{t("peopleTitle")}</h2>
+            <span className="status green">🔒 {t("e2ee")}</span>
+          </div>
+          {state.people.map((p, i) => (
+            <div className="activity" key={p.id}>
+              <Avatar name={p.name} i={i + 2} />
+              <div>
+                <h4>
+                  {p.name} {p.id === state.me?.id && <span className="muted">({t("you")})</span>}
+                </h4>
+                <p>{t(p.role === "parent" ? "roleParentDesc" : "roleCaregiverDesc")}</p>
+              </div>
+              <span className="chip">{t(p.role === "parent" ? "rolesParent" : "rolesCaregiver")}</span>
+            </div>
+          ))}
         </section>
 
-        <section className="card">
-          <h2>{t("peopleInFamily")}</h2>
-          <ul className="list">
-            {state.people.map((p) => (
-              <li key={p.id}>
-                <Initial name={p.name} />
-                <span className="grow">
-                  {p.name} {p.id === state.me?.id ? <span className="muted">({t("you")})</span> : null}
-                </span>
-                <span className="chip static">{t(p.role === "parent" ? "rolesParent" : "rolesCaregiver")}</span>
-              </li>
-            ))}
-          </ul>
-          {isParent && (
-            <div className="stack" style={{ marginTop: 8 }}>
-              <button className="btn block" onClick={() => go({ name: "invite", role: "caregiver" })}>
-                <Icon name="qr" />
-                {t("inviteCaregiver")}
+        {isParent && (
+          <section className="big-card invite-card">
+            <h2>{t("inviteCardTitle")}</h2>
+            <p>{t("inviteCardText")}</p>
+            <div className="row" style={{ marginTop: 20 }}>
+              <button className="primary" onClick={() => invite("caregiver")}>
+                <Icon name="qr" /> {t("inviteCaregiver")}
               </button>
-              <button className="btn ghost" onClick={() => go({ name: "invite", role: "parent" })}>
+              <button className="secondary" onClick={() => invite("parent")}>
                 {t("inviteParent")}
               </button>
             </div>
-          )}
-        </section>
-
-        <section className="card">
-          <h2>{t("safeList")}</h2>
-          {state.safe.length === 0 ? (
-            <p className="small muted">{t("safeEmpty")}</p>
-          ) : (
-            <ul className="list">
-              {state.safe.map((e) => (
-                <li key={e.barcode + e.member_id}>
-                  <span className="dot green" />
-                  <span className="grow">
-                    <strong>{productName(e.barcode)}</strong>
-                    <br />
-                    <span className="small muted">
-                      {t("approvedFor", { name: state.members.find((m) => m.id === e.member_id)?.name ?? "" })} · {e.approved_by}
-                    </span>
-                  </span>
-                  {isParent && (
-                    <button className="btn ghost" onClick={() => share({ t: "unsafe", id: newId(), barcode: e.barcode, member_id: e.member_id })}>
-                      {t("remove")}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </main>
+          </section>
+        )}
+      </div>
     </>
   );
 }
 
 export function MemberEdit({ id }: { id: string }) {
-  const { t, back, state, share, isParent } = useApp();
+  const { t, back, state, isParent, publishProfiles, toast } = useApp();
   const existing = state.members.find((m) => m.id === id);
   const [p, setP] = useState<Profile>(existing ?? blankProfile(randomId(6)));
   if (!isParent) {
-    return (
-      <>
-        <Top title={t("edit")} onBack={back} backLabel={t("back")} />
-        <main className="page"><p>{t("notParent")}</p></main>
-      </>
-    );
+    return <Heading eyebrow={t("profEyebrow")} title={t("notParent")} />;
   }
   const publish = async (members: Profile[]) => {
-    await share({ t: "profiles", id: newId(), v: state.profilesVersion + 1, members, safe: state.safe.filter((e) => members.some((m) => m.id === e.member_id)) });
+    await publishProfiles(members);
+    toast(t("profileSaved"));
     back();
   };
-  const valid = p.name.trim() && p.avoid.length + p.diets.length > 0;
+  const valid = validProfile(p);
   return (
     <>
-      <Top title={existing ? existing.name : t("addPerson")} onBack={back} backLabel={t("back")} />
-      <main className="page">
+      <Heading eyebrow={t("profEyebrow")} title={p.name.trim() ? t("profTitle", { name: p.name.trim() }) : t("profTitleNew")} lead={t("profLead")} />
+      <form className="content big-card" onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        const edited = { ...p, name: p.name.trim() };
+        // keep the family's order: replace in place, or add at the end
+        publish(existing ? state.members.map((m) => (m.id === p.id ? edited : m)) : [...state.members, edited]);
+      }}>
         <ProfileEditor value={p} onChange={setP} emergency />
-        {!valid && <p className="muted small">{t("noAllergiesYet")}</p>}
-        <button className="btn primary block" disabled={!valid} onClick={() => {
-          const edited = { ...p, name: p.name.trim() };
-          // keep the family's order: replace in place, or add at the end
-          publish(existing ? state.members.map((m) => (m.id === p.id ? edited : m)) : [...state.members, edited]);
-        }}>
-          {t("save")}
-        </button>
-        {existing && (
-          <button className="btn ghost" style={{ color: "var(--red)" }} onClick={() => publish(state.members.filter((m) => m.id !== p.id))}>
-            {t("removePerson")}
+        {!valid && <p className="small-note">{t("noAllergiesYet")}</p>}
+        <div className="row" style={{ marginTop: 20 }}>
+          <button className="primary" type="submit" disabled={!valid}>
+            {t("saveProfile")} <Icon name="arrow" />
           </button>
-        )}
-      </main>
+          {existing && (
+            <button className="secondary danger-text" type="button" onClick={() => publish(state.members.filter((m) => m.id !== p.id))}>
+              {t("removePerson")}
+            </button>
+          )}
+        </div>
+      </form>
     </>
   );
 }
 
-export function InviteScreen({ role }: { role: "parent" | "caregiver" }) {
-  const { t, back, state } = useApp();
+export function InviteModal({ role, onClose }: { role: "parent" | "caregiver"; onClose: () => void }) {
+  const { t, state } = useApp();
   const canvas = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const link = state.circle ? inviteLink(state.circle, role) : "";
   useEffect(() => {
-    if (canvas.current && link) QRCode.toCanvas(canvas.current, link, { errorCorrectionLevel: "M", margin: 1, width: 300 });
+    if (canvas.current && link) QRCode.toCanvas(canvas.current, link, { errorCorrectionLevel: "M", margin: 1, width: 260, color: { dark: "#0f3d38" } });
   }, [link]);
+  const title = t(role === "parent" ? "inviteParent" : "inviteCaregiver");
   return (
-    <>
-      <Top title={t(role === "parent" ? "inviteParent" : "inviteCaregiver")} onBack={back} backLabel={t("back")} />
-      <main className="page">
-        <p className="lead">{t("inviteLead")}</p>
-        <div className="qr">
-          <canvas ref={canvas} aria-label="QR" />
-        </div>
-        <p className="small">{t(role === "parent" ? "inviteParentNote" : "inviteCaregiverNote")}</p>
-        <label className="field small">
-          {t("inviteLinkLabel")}
-          <input readOnly value={link} dir="ltr" onFocus={(e) => e.target.select()} />
-        </label>
-        <div className="row">
-          <button className="btn grow" onClick={async () => {
-            await navigator.clipboard?.writeText(link).catch(() => undefined);
-            setCopied(true);
-          }}>
-            {copied ? t("inviteCopied") : t("inviteCopy")}
+    <Modal label={title} onClose={onClose} closeLabel={t("close")}>
+      <div className="eyebrow">{t("quickInviteSub")}</div>
+      <h2>{title}</h2>
+      <p>{t("inviteLead")}</p>
+      <div className="qr">
+        <canvas ref={canvas} aria-label="QR" />
+      </div>
+      <p>{t(role === "parent" ? "inviteParentNote" : "inviteCaregiverNote")}</p>
+      <label className="field" htmlFor="invite-link">{t("inviteLinkLabel")}</label>
+      <input id="invite-link" type="text" readOnly value={link} dir="ltr" onFocus={(e) => e.target.select()} />
+      <div className="row" style={{ marginTop: 12 }}>
+        <button className="secondary" onClick={async () => {
+          await navigator.clipboard?.writeText(link).catch(() => undefined);
+          setCopied(true);
+        }}>
+          {copied ? t("inviteCopied") : t("inviteCopy")}
+        </button>
+        {"share" in navigator && (
+          <button className="secondary" onClick={() => navigator.share({ title: "Wiqaya", url: link }).catch(() => undefined)}>
+            <Icon name="share" /> {t("inviteShare")}
           </button>
-          {"share" in navigator && (
-            <button className="btn grow" onClick={() => navigator.share({ title: "Wiqaya", url: link }).catch(() => undefined)}>
-              <Icon name="share" />
-              {t("inviteShare")}
-            </button>
-          )}
-        </div>
-        <p className="small muted">{t("invitePrivate")}</p>
-      </main>
-    </>
-  );
-}
-
-type Entry = { id: string; terms: Record<string, string[]> };
-const ENTRIES = [...allergens.allergens, ...allergens.diets] as Entry[];
-
-/** Every name that means this allergen, in one language: what a cook should look for. */
-function hiddenNames(id: string, lang: "en" | "ar"): string[] {
-  const base = ENTRIES.find((e) => e.id === id)?.terms[lang] ?? [];
-  const pack = jordan.entries.filter((e) => e.allergen === id && e.lang === lang).map((e) => e.term);
-  const names = [...new Set([...base, ...pack].filter((x) => !x.startsWith("~")).map((x) => x.replace(/\*$/, "")))];
-  // "peanut" and "peanuts": keep one
-  return names.filter((x) => !(x.endsWith("s") && names.includes(x.slice(0, -1)))).slice(0, 14);
-}
-
-export function CookCard({ id }: { id: string }) {
-  const { t, back, state } = useApp();
-  const m = state.members.find((x) => x.id === id);
-  if (!m) return null;
-  const block = (lang: "en" | "ar") => (
-    <section className="em-card" lang={lang} dir={lang === "ar" ? "rtl" : "ltr"}>
-      <h2 style={{ fontSize: 22 }}>{lang === "ar" ? `ممنوع على ${m.name}:` : `${m.name} must not eat:`}</h2>
-      {[...m.avoid, ...m.diets].map((a) => (
-        <div key={a}>
-          <strong style={{ fontSize: 20 }}>{triggerName(lang, a, true)}</strong>
-          <div className="small muted">{hiddenNames(a, lang).join(lang === "ar" ? "، " : ", ")}</div>
-        </div>
-      ))}
-      <p style={{ margin: 0 }}>{lang === "ar" ? "يُرجى التحقق من كل المكونات والصلصات والزيوت. شكرًا." : "Please check every ingredient, sauce and oil. Thank you."}</p>
-    </section>
-  );
-  return (
-    <>
-      <Top title={t("cookCard")} onBack={back} backLabel={t("back")} />
-      <main className="page">
-        <p className="lead">{t("cookCardLead")}</p>
-        {block("ar")}
-        {block("en")}
-      </main>
-    </>
+        )}
+      </div>
+      <div className="warning" style={{ marginTop: 16 }}>{t("invitePrivate")}</div>
+    </Modal>
   );
 }

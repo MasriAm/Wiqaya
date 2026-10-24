@@ -125,10 +125,10 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
 
     let level: Level = reasons.some((r) => r.level === "red") ? "red" : reasons.some((r) => r.level === "amber") ? "amber" : "green";
 
-    // a parent's approval, for this recipe
+    // a parent's approval, for this recipe. It never overrides red: an avoided ingredient on the label stays red.
     if (facts.barcode) {
       const entry = safe.find((e) => e.barcode === facts.barcode && e.member_id === member.id);
-      if (entry && entry.recipe === recipe && recipe) {
+      if (entry && entry.recipe === recipe && recipe && level !== "red") {
         reasons.unshift({ level: "green", kind: "approved", source: "safe_list", approved_by: entry.approved_by });
         level = "green";
       } else if (entry) {

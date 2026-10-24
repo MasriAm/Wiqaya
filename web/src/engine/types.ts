@@ -81,6 +81,9 @@ export interface SafeEntry {
   member_id: string;
   approved_by: string;
   at: number;
+  /** For the safe list screen: the product's name and the ingredients that were approved, to show what changed. */
+  name?: string | null;
+  ingredients?: string[];
 }
 
 export type ReasonKind =

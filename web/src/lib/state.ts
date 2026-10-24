@@ -12,6 +12,10 @@ export interface Contact {
 
 /** A family member, plus what the emergency card shows. */
 export interface Profile extends Member {
+  /** A face for the profile card (an emoji), chosen by a parent. */
+  avatar?: string;
+  /** Celiac disease: shown as a condition; it always adds gluten to what is avoided. */
+  celiac?: boolean;
   emergency: { plan: string; meds: string; contacts: Contact[]; epi_expiry: string };
 }
 
@@ -62,6 +66,8 @@ export interface FeedItem {
 
 export interface AppState {
   lang: Lang;
+  /** "The Al-Khatib circle": optional, set by the parent who created the family. */
+  familyName: string;
   me: Person | null;
   circle: Circle | null;
   members: Profile[];
@@ -77,6 +83,7 @@ export interface AppState {
 
 export const EMPTY: AppState = {
   lang: navigatorLang(),
+  familyName: "",
   me: null,
   circle: null,
   members: [],
@@ -167,5 +174,5 @@ export async function wipe(): Promise<void> {
 }
 
 export function blankProfile(id: string): Profile {
-  return { id, name: "", avoid: [], diets: [], traces: "avoid", emergency: { plan: "", meds: "", contacts: [], epi_expiry: "" } };
+  return { id, name: "", avatar: "", avoid: [], diets: [], traces: "avoid", emergency: { plan: "", meds: "", contacts: [], epi_expiry: "" } };
 }

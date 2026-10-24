@@ -22,6 +22,7 @@ class FakeGemma:
         self.findings = findings or []
         self.tool_calls = tool_calls or []
         self.sent: list[str] = []
+        self.expiry = "2026-11-30"
 
     def status(self):
         return {"available": True, "model": "fake"}
@@ -35,6 +36,8 @@ class FakeGemma:
             return {"pairs": self.pairs}, {}
         if "findings" in props:
             return {"findings": self.findings}, {}
+        if "expiry" in props:
+            return {"expiry": self.expiry, "printed": "EXP 11/2026"}, {}
         return {"items": [{"trigger": "x", "quote": "y", "text": "Malt extract is made from barley."}]}, {}
 
     def run_tools(self, system, user, tools, max_steps=6):
@@ -204,3 +207,13 @@ def test_relay_api(client):
 def test_health(client):
     j = client(FakeGemma()).get("/api/health").json()
     assert j["gemma"]["available"] is True
+
+
+def test_expiry_date_from_a_box_photo(client):
+    g = FakeGemma()
+    c = client(g)
+    r = c.post("/api/expiry", files={"photo": ("box.png", png(), "image/png")})
+    assert r.json() == {"expiry": "2026-11-30", "printed": "EXP 11/2026"}
+    g.expiry = "next year"  # anything that isn't a date is dropped
+    assert c.post("/api/expiry", files={"photo": ("box.png", png(), "image/png")}).json()["expiry"] is None
+    assert c.post("/api/expiry", files={"photo": ("x.png", b"not an image", "image/png")}).status_code == 400

@@ -11,6 +11,7 @@ Never a name, an allergy profile or a location.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from wiqaya import off
@@ -243,10 +244,13 @@ def research(gemma: Gemma, ingredients: list[str], product_name: str | None = No
     user = ("Ingredients to check:\n" + "\n".join(f"- {i}" for i in ingredients)
             + (f"\n\n(They are from: {product_name})" if product_name else ""))
     history, log = gemma.run_tools(system, user, research_tools(), max_steps=6)
-    answer, _ = gemma.json(system, "Now give your findings for every ingredient listed, as JSON.", RESEARCH_SCHEMA,
-                           history=history, num_predict=1536)
-    seen_urls = {r.get("url") for call in log if isinstance(call.get("result"), list) for r in call["result"]
-                 if isinstance(r, dict)}
+    seen_urls = [r.get("url") for call in log if isinstance(call.get("result"), list) for r in call["result"]
+                 if isinstance(r, dict) and r.get("url")]
+    final = "Now give your findings for every ingredient listed, as JSON."
+    if seen_urls:
+        final += " In \"sources\", copy the exact URLs you relied on from these search results:\n" + "\n".join(
+            dict.fromkeys(seen_urls))
+    answer, _ = gemma.json(system, final, RESEARCH_SCHEMA, history=history, num_predict=1536)
     out = []
     for f in answer.get("findings") or []:
         triggers = [t for t in f.get("triggers") or [] if t in TRIGGERS]
@@ -292,3 +296,24 @@ def explain(gemma: Gemma, findings: list[dict], lang: str = "en") -> list[dict]:
         if text:
             out.append({"trigger": f["trigger"], "quote": f["quote"], "text": text[:300]})
     return out
+
+
+# ---------------------------------------------------------------------------------------------- expiry date
+EXPIRY_SYSTEM = """You read the expiry date printed on a medicine box or auto-injector, for a reminder. Copy the date
+that follows EXP, Expiry, Use by, or انتهاء. Ignore the manufacturing date (MFG, Mfd, LOT). If no expiry date is
+readable, answer null. Write the date as YYYY-MM-DD; a date with only a month and year means the last day of that
+month."""
+
+EXPIRY_SCHEMA = {
+    "type": "object",
+    "properties": {"expiry": {"type": ["string", "null"]}, "printed": {"type": ["string", "null"]}},
+    "required": ["expiry", "printed"],
+}
+
+
+def expiry(gemma: Gemma, image_b64: str) -> dict:
+    """``{"expiry": "YYYY-MM-DD" | None, "printed": the text as printed}``. The phone asks the parent to confirm."""
+    answer, _ = gemma.json(EXPIRY_SYSTEM, "The photo:", EXPIRY_SCHEMA, images=[image_b64], num_predict=128)
+    date = str(answer.get("expiry") or "")
+    ok = re.fullmatch(r"20\d\d-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])", date)
+    return {"expiry": date if ok else None, "printed": (str(answer.get("printed") or "")[:40] or None)}

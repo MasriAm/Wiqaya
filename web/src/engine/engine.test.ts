@@ -160,13 +160,23 @@ test("sticker: an ingredient missing from the Arabic sticker is caught", () => {
 });
 
 test("safe list: green for the approved recipe, amber when the recipe changes", () => {
-  const facts = product(label(["sugar", "cocoa"], { may_contain: "may contain nuts" }));
+  // amber: an ingredient no list knows
+  const facts = product(label(["sugar", "cocoa", "zorbel extract"]));
+  assert.equal(verdicts(facts, [sara])[0].level, "amber");
   const recipe = recipeOf(facts);
   const safe = [{ barcode: facts.barcode!, recipe, member_id: "s", approved_by: "Mum", at: 1 }];
   assert.equal(verdicts(facts, [sara], safe)[0].level, "green");
   assert.equal(verdicts(facts, [sara], safe)[0].reasons[0].kind, "approved");
-  const changed = product(label(["sugar", "cocoa", "milk"], { may_contain: "may contain nuts" }));
+  const changed = product(label(["sugar", "cocoa", "zorbel extract", "milk"]));
   const v = verdicts(changed, [sara], safe)[0];
   assert.notEqual(v.level, "green");
   assert.ok(v.reasons.some((r) => r.kind === "recipe_changed"));
+});
+
+test("safe list: an approval never turns red into green", () => {
+  const facts = product(label(["sugar", "cocoa"], { may_contain: "may contain nuts" }));
+  const safe = [{ barcode: facts.barcode!, recipe: recipeOf(facts), member_id: "s", approved_by: "Mum", at: 1 }];
+  const v = verdicts(facts, [sara], safe)[0];
+  assert.equal(v.level, "red");
+  assert.ok(!v.reasons.some((r) => r.kind === "approved"));
 });

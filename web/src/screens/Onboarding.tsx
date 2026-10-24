@@ -3,51 +3,85 @@ import { useApp } from "../App.tsx";
 import { newFamilyKey, newParentKeys, randomId } from "../lib/crypto.ts";
 import { newId, parseInvite, type Invite } from "../lib/circle.ts";
 import { readFrame, startCamera, stopCamera } from "../lib/camera.ts";
-import { blankProfile, type Person, type Profile } from "../lib/state.ts";
-import { Icon, Initial, Top } from "../ui.tsx";
-import { ProfileEditor, summary } from "./ProfileEditor.tsx";
+import { blankProfile, wipe, type Person, type Profile } from "../lib/state.ts";
+import { Heading, Icon, Modal } from "../ui.tsx";
+import { MemberCard, ProfileEditor, validProfile } from "./ProfileEditor.tsx";
 
-function LangSwitch() {
-  const { state, update } = useApp();
+/** Consent first: what Wiqaya keeps and where, then create a family or join one. */
+export function Welcome() {
+  const { t, go } = useApp();
+  const [agreed, setAgreed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const points: [string, string][] = [
+    [t("p1t"), t("p1")],
+    [t("p2t"), t("p2")],
+    [t("p3t"), t("p3")],
+  ];
   return (
-    <button className="btn ghost" onClick={() => update((s) => ({ ...s, lang: s.lang === "ar" ? "en" : "ar" }))} lang={state.lang === "ar" ? "en" : "ar"}>
-      {state.lang === "ar" ? "English" : "العربية"}
-    </button>
+    <>
+      <Heading eyebrow={t("welEyebrow")} title={t("welTitle")} lead={t("welLead")} />
+      <div className="content stack">
+        <section className="big-card">
+          <h2 className="icon-title">
+            <Icon name="shield" /> {t("privacyByDesign")}
+          </h2>
+          {points.map(([title, text], i) => (
+            <div className="activity" key={title}>
+              <div>
+                <h4>
+                  0{i + 1} · {title}
+                </h4>
+                <p>{text}</p>
+              </div>
+            </div>
+          ))}
+          <label className="check">
+            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+            {t("consent")}
+          </label>
+          <div className="row">
+            <button className="primary" disabled={!agreed} onClick={() => go({ name: "setup" })}>
+              {t("createCircle")}
+            </button>
+            <button className="secondary" disabled={!agreed} onClick={() => go({ name: "join" })}>
+              <Icon name="qr" /> {t("joinCircle")}
+            </button>
+          </div>
+        </section>
+        <section className="big-card">
+          <h3>{t("controlTitle")}</h3>
+          <p style={{ margin: "10px 0" }}>{t("controlText")}</p>
+          <button className="secondary danger-text" onClick={() => setDeleting(true)}>
+            {t("deleteEverything")}
+          </button>
+        </section>
+      </div>
+      {deleting && <DeleteModal onClose={() => setDeleting(false)} />}
+    </>
   );
 }
 
-export function Welcome() {
-  const { t, go } = useApp();
+export function DeleteModal({ onClose }: { onClose: () => void }) {
+  const { t, update, toast } = useApp();
   return (
-    <main className="page">
-      <div className="row spread">
-        <span />
-        <LangSwitch />
-      </div>
-      <section className="hero">
-        <div className="mark" aria-label="Wiqaya, وقاية">
-          <span>Wiqaya</span>
-          <span lang="ar">وقاية</span>
-        </div>
-        <p className="tag">{t("tagline")}</p>
-        <p className="lead">{t("welcomeLead")}</p>
-      </section>
-      <div className="stack">
-        <button className="btn primary big block" onClick={() => go({ name: "setup" })}>
-          {t("setUp")}
-        </button>
-        <button className="btn block" onClick={() => go({ name: "join" })}>
-          {t("join")}
-        </button>
-      </div>
-    </main>
+    <Modal label={t("deleteConfirmTitle")} onClose={onClose} closeLabel={t("close")}>
+      <h2>{t("deleteConfirmTitle")}</h2>
+      <p>{t("deleteConfirmText")}</p>
+      <button className="danger-btn wide" onClick={() => {
+        update((s) => ({ ...s, me: null, circle: null, members: [], people: [], scans: [], feed: [], safe: [], requests: [], cursor: 0, seen: [], profilesVersion: 0, familyName: "" }));
+        toast(t("deleted"));
+        wipe().then(() => location.replace("/"));
+      }}>
+        {t("deleteEverything")}
+      </button>
+    </Modal>
   );
 }
 
 export function Setup() {
-  const { t, back, update, go, share, state } = useApp();
-  const [step, setStep] = useState(0);
+  const { t, update, go, share, state } = useApp();
   const [myName, setMyName] = useState("");
+  const [family, setFamily] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,104 +91,92 @@ export function Setup() {
     const keys = await newParentKeys();
     const me: Person = { id: randomId(9), name: myName.trim(), role: "parent" };
     const circle = { id: randomId(16), key: await newFamilyKey(), parentPub: keys.pub, parentPriv: keys.priv };
-    update((s) => ({ ...s, me, circle, members, people: [me], profilesVersion: 0 }));
+    update((s) => ({ ...s, me, circle, members, people: [me], profilesVersion: 0, familyName: family.trim() }));
     // tell the relay: the profiles are versioned and signed, the hello lets other phones list this person
     setTimeout(async () => {
       await share({ t: "hello", id: newId(), from: me });
-      await share({ t: "profiles", id: newId(), v: 1, members, safe: [] });
+      await share({ t: "profiles", id: newId(), v: 1, members, safe: [], family: family.trim() });
       go({ name: "home" }, true);
     }, 0);
   };
 
-  const valid = (p: Profile) => p.name.trim() && p.avoid.length + p.diets.length > 0;
-
   if (editing) {
+    const existing = members.some((m) => m.id === editing.id);
     return (
       <>
-        <Top title={t("addPerson")} onBack={() => setEditing(null)} backLabel={t("back")} />
-        <main className="page">
-          <ProfileEditor value={editing} onChange={setEditing} />
-          {!valid(editing) && <p className="muted small">{t("noAllergiesYet")}</p>}
-          <button className="btn primary block" disabled={!valid(editing)} onClick={() => {
-            setMembers((m) => [...m.filter((x) => x.id !== editing.id), { ...editing, name: editing.name.trim() }]);
-            setEditing(null);
-          }}>
-            {t("save")}
-          </button>
-        </main>
+        <Heading eyebrow={t("setupEyebrow")} title={editing.name.trim() ? t("profTitle", { name: editing.name.trim() }) : t("profTitleNew")} lead={t("profLead")} />
+        <form className="content big-card" onSubmit={(e) => {
+          e.preventDefault();
+          if (!validProfile(editing)) return;
+          setMembers((m) => (existing ? m.map((x) => (x.id === editing.id ? { ...editing, name: editing.name.trim() } : x)) : [...m, { ...editing, name: editing.name.trim() }]));
+          setEditing(null);
+        }}>
+          <ProfileEditor value={editing} onChange={setEditing} emergency />
+          {!validProfile(editing) && <p className="small-note">{t("noAllergiesYet")}</p>}
+          <div className="row" style={{ marginTop: 20 }}>
+            <button className="primary" type="submit" disabled={!validProfile(editing)}>
+              {t("save")} <Icon name="arrow" />
+            </button>
+            <button className="secondary" type="button" onClick={() => setEditing(null)}>
+              {t("cancel")}
+            </button>
+            {existing && (
+              <button className="secondary danger-text" type="button" onClick={() => {
+                setMembers((m) => m.filter((x) => x.id !== editing.id));
+                setEditing(null);
+              }}>
+                {t("removePerson")}
+              </button>
+            )}
+          </div>
+        </form>
       </>
     );
   }
 
   return (
     <>
-      <Top title={t("setUp")} onBack={step === 0 ? back : () => setStep(step - 1)} backLabel={t("back")} right={<LangSwitch />} />
-      <main className="page">
-        {step === 0 && (
-          <>
-            <label className="field">
-              <span style={{ fontSize: 20 }}>{t("yourName")}</span>
-              <input autoFocus value={myName} placeholder={t("yourNamePh")} onChange={(e) => setMyName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && myName.trim() && setStep(1)} />
-            </label>
-            <button className="btn primary block" disabled={!myName.trim()} onClick={() => setStep(1)}>
-              {t("next")}
-            </button>
-          </>
+      <Heading eyebrow={t("setupEyebrow")} title={t("setupTitle")} lead={t("setupLead")} />
+      <div className="content stack">
+        <section className="big-card">
+          <label className="field first" htmlFor="me-name">{t("yourName")}</label>
+          <input id="me-name" type="text" autoFocus maxLength={40} value={myName} placeholder={t("yourNamePh")} onChange={(e) => setMyName(e.target.value)} />
+          <label className="field" htmlFor="fam-name">{t("familyName")}</label>
+          <input id="fam-name" type="text" maxLength={40} value={family} placeholder={t("familyNamePh")} onChange={(e) => setFamily(e.target.value)} />
+        </section>
+        <div className="section-title">
+          <h2>{t("setupPeople")}</h2>
+        </div>
+        {members.length > 0 && (
+          <div className="family-row">
+            {members.map((m, i) => (
+              <MemberCard key={m.id} p={m} i={i} onClick={() => setEditing(m)} />
+            ))}
+          </div>
         )}
-        {step === 1 && (
-          <>
-            <h2 className="big">{t("setupMembersTitle")}</h2>
-            <p className="lead">{t("setupMembersLead")}</p>
-            {members.length > 0 && (
-              <ul className="list card">
-                {members.map((m) => (
-                  <li key={m.id}>
-                    <button className="item" onClick={() => setEditing(m)}>
-                      <Initial name={m.name} />
-                      <span className="grow">
-                        <strong>{m.name}</strong>
-                        <br />
-                        <span className="muted small">{summary(state.lang, m)}</span>
-                      </span>
-                      <span className="muted small">{t("edit")}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <button className="btn block" onClick={() => setEditing(blankProfile(randomId(6)))}>
-              <Icon name="plus" />
-              {t("addPerson")}
-            </button>
-            <button className="btn primary block" disabled={members.length === 0} onClick={() => setStep(2)}>
-              {t("next")}
-            </button>
-          </>
-        )}
-        {step === 2 && (
-          <>
-            <h2 className="big">{t("setupPrivacyTitle")}</h2>
-            <ul className="points">
-              <li>{t("setupPrivacy1")}</li>
-              <li>{t("setupPrivacy2")}</li>
-              <li>{t("setupPrivacy3")}</li>
-            </ul>
-            <button className="btn primary big block" disabled={busy} onClick={finish}>
-              {t("setupFinish")}
-            </button>
-          </>
-        )}
-      </main>
+        <button className="add-card" onClick={() => setEditing(blankProfile(randomId(6)))}>
+          <Icon name="plus" /> {t("addPerson")}
+        </button>
+        {members.length === 0 && <p className="small-note">{t("setupNeedPerson")}</p>}
+        <button className="primary wide" disabled={busy || !myName.trim() || members.length === 0} onClick={finish}>
+          {t("setupStart")} <Icon name="arrow" />
+        </button>
+        <p className="center small-note">
+          {t("checkNotGuarantee")} · <span lang={state.lang === "ar" ? "en" : "ar"}>{state.lang === "ar" ? "A check, not a guarantee" : "فحص وليس ضمانًا"}</span>
+        </p>
+      </div>
     </>
   );
 }
 
 export function Join({ invite }: { invite: Invite | null }) {
-  const { t, back, update, go, share, toast } = useApp();
+  const { t, update, go, share, toast } = useApp();
   const [inv, setInv] = useState<Invite | null>(invite);
   const [pasted, setPasted] = useState("");
   const [name, setName] = useState("");
   const [scanning, setScanning] = useState(false);
+  // a caregiver can arrive straight from an invite link, past the welcome screen: ask for consent here too
+  const [agreed, setAgreed] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -175,12 +197,15 @@ export function Join({ invite }: { invite: Invite | null }) {
           await new Promise((r) => setTimeout(r, 250));
         }
       })
-      .catch(() => setScanning(false));
+      .catch(() => {
+        setScanning(false);
+        toast(t("scanNoCamera"));
+      });
     return () => {
       stop = true;
       stopCamera(stream);
     };
-  }, [scanning]);
+  }, [scanning, t, toast]);
 
   const join = () => {
     if (!inv) return;
@@ -195,48 +220,48 @@ export function Join({ invite }: { invite: Invite | null }) {
 
   return (
     <>
-      <Top title={t("join")} onBack={back} backLabel={t("back")} right={<LangSwitch />} />
-      <main className="page">
-        {!inv && (
-          <>
-            <p className="lead">{t("joinHelp")}</p>
+      <Heading eyebrow={t("joinEyebrow")} title={t("joinTitle")} lead={inv ? t(inv.r === "parent" ? "joinAsParent" : "joinAsCaregiver") : t("joinHelp")} />
+      <div className="content stack">
+        {!inv ? (
+          <section className="big-card">
             {scanning ? (
               <div className="camera">
-                <video ref={video} playsInline muted />
-                <div className="frame" />
+                <video ref={video} playsInline muted aria-label={t("scanInvite")} />
+                <span className="camera-hint">{t("scanInvite")}</span>
               </div>
             ) : (
-              <button className="btn block" onClick={() => setScanning(true)}>
-                <Icon name="qr" />
-                {t("scanInvite")}
+              <button className="primary" onClick={() => setScanning(true)}>
+                <Icon name="qr" /> {t("scanInvite")}
               </button>
             )}
-            <label className="field">
-              {t("joinPaste")}
-              <input value={pasted} dir="ltr" onChange={(e) => setPasted(e.target.value)} placeholder="https://…#join=…" />
-            </label>
-            <button className="btn primary block" disabled={!pasted.trim()} onClick={() => {
+            <label className="field" htmlFor="paste">{t("joinPaste")}</label>
+            <input id="paste" type="text" value={pasted} dir="ltr" onChange={(e) => setPasted(e.target.value)} placeholder="https://…#join=…" />
+            <button className="secondary" style={{ marginTop: 14 }} disabled={!pasted.trim()} onClick={() => {
               const p = parseInvite(pasted.trim());
               if (p) setInv(p);
               else toast(t("joinBad"));
             }}>
               {t("next")}
             </button>
-          </>
-        )}
-        {inv && (
-          <>
-            <p className="lead">{t(inv.r === "parent" ? "inviteParentNote" : "inviteCaregiverNote")}</p>
-            <label className="field">
-              <span style={{ fontSize: 20 }}>{t("yourName")}</span>
-              <input autoFocus value={name} placeholder={t("yourNamePh")} onChange={(e) => setName(e.target.value)} />
+          </section>
+        ) : (
+          <form className="big-card" onSubmit={(e) => {
+            e.preventDefault();
+            if (name.trim() && agreed) join();
+          }}>
+            <label className="field first" htmlFor="join-name">{t("yourName")}</label>
+            <input id="join-name" type="text" autoFocus maxLength={40} value={name} placeholder={t("yourNamePh")} onChange={(e) => setName(e.target.value)} />
+            <label className="check">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              {t("consent")}
             </label>
-            <button className="btn primary big block" disabled={!name.trim()} onClick={join}>
-              {t("joinGo")}
+            <p className="small-note">{t("p2")}</p>
+            <button className="primary" type="submit" style={{ marginTop: 18 }} disabled={!name.trim() || !agreed}>
+              {t("joinGo")} <Icon name="arrow" />
             </button>
-          </>
+          </form>
         )}
-      </main>
+      </div>
     </>
   );
 }
