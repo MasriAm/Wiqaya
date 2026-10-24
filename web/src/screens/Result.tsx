@@ -205,16 +205,13 @@ export function Result({ id }: { id: string }) {
               <div className="compare">
                 <div>
                   <small>{t("originalLabel", { lang: languageName(lang, facts.label?.language) })}</small>
-                  {gaps.statements.map((s) => {
-                    const q = (s === "may_contain" ? facts.label?.may_contain : facts.label?.contains) ?? "";
-                    return (
-                      <div key={s}>
-                        “{q}”
-                        <br />
-                        <b>{findTerms(q, facts.label?.language).map((m) => triggerName(lang, m.trigger)).join(", ")}</b>
-                      </div>
-                    );
-                  })}
+                  {gaps.statements.map((s) => (
+                    <div key={s.kind}>
+                      “{facts.label?.[s.kind] ?? ""}”
+                      <br />
+                      <b>{s.missing.map((m) => triggerName(lang, m)).join(", ")}</b>
+                    </div>
+                  ))}
                   {gaps.ingredients.map((i) => (
                     <div key={i.text}>
                       “{i.text}”{i.en && i.en.toLowerCase() !== i.text.toLowerCase() ? <b> · {i.en}</b> : null}

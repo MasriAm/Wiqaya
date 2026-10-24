@@ -14,15 +14,41 @@ export function recipeOf(facts: ProductFacts): string {
   return fingerprint([...l.ingredients.map((i) => i.text), `contains:${l.contains ?? ""}`, `may:${l.may_contain ?? ""}`]);
 }
 
-/** Original-label ingredients with no partner on the Arabic sticker, and statements the sticker leaves out. */
-export function stickerGaps(facts: ProductFacts): { ingredients: Ingredient[]; statements: ("contains" | "may_contain")[] } {
+function triggersOf(text: string | null | undefined, en: string | null | undefined, language: string | null): Set<TriggerId> {
+  return new Set([...findTerms(text, language), ...findTerms(en, "en")].map((m) => m.trigger));
+}
+
+export interface StickerGaps {
+  ingredients: (Ingredient & { missing: TriggerId[] })[];
+  statements: { kind: "contains" | "may_contain"; missing: TriggerId[] }[];
+}
+
+/** What the Arabic sticker leaves out: original-label ingredients with no partner on the sticker, or whose partner
+ *  doesn't name the same allergens (Gemma can pair the wrong items, or two whole lists read as one item), and
+ *  "contains" / "may contain" statements the sticker drops or shortens. Each gap lists the allergens missing. */
+export function stickerGaps(facts: ProductFacts): StickerGaps {
   const { label, sticker, pairs } = facts;
   if (!label || !sticker || !pairs) return { ingredients: [], statements: [] };
-  const paired = new Set(pairs.filter(([, s]) => s !== null && s >= 0 && s < sticker.ingredients.length).map(([o]) => o));
-  const ingredients = label.ingredients.filter((_, i) => !paired.has(i));
-  const statements: ("contains" | "may_contain")[] = [];
-  if (label.may_contain && !sticker.may_contain) statements.push("may_contain");
-  if (label.contains && !sticker.contains) statements.push("contains");
+  const partner = new Map<number, number>();
+  for (const [o, s] of pairs) if (s !== null && s >= 0 && s < sticker.ingredients.length) partner.set(o, s);
+  const ingredients: StickerGaps["ingredients"] = [];
+  label.ingredients.forEach((ing, i) => {
+    const s = partner.get(i);
+    const there = s === undefined ? null : triggersOf(sticker.ingredients[s].text, sticker.ingredients[s].en, sticker.language);
+    if (there === null) {
+      ingredients.push({ ...ing, missing: [...triggersOf(ing.text, ing.en, label.language)] });
+      return;
+    }
+    const missing = [...triggersOf(ing.text, ing.en, label.language)].filter((t) => !there.has(t));
+    if (missing.length) ingredients.push({ ...ing, missing });
+  });
+  const statements: StickerGaps["statements"] = [];
+  for (const kind of ["may_contain", "contains"] as const) {
+    if (!label[kind]) continue;
+    const there = triggersOf(sticker[kind], null, sticker.language);
+    const missing = [...triggersOf(label[kind], null, label.language)].filter((t) => !there.has(t));
+    if (!sticker[kind] || missing.length) statements.push({ kind, missing });
+  }
   return { ingredients, statements };
 }
 
@@ -94,16 +120,16 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
     if (facts.label && facts.sticker) {
       if (!facts.pairs) add({ level: "amber", kind: "not_compared", source: "wiqaya" });
       for (const ing of gaps.ingredients) {
-        for (const m of [...findTerms(ing.text, facts.label.language), ...findTerms(ing.en, "en")]) {
-          if (watch.has(m.trigger)) add({ level: "red", kind: "sticker_gap", trigger: m.trigger, quote: ing.text, source: "label" });
+        for (const t of ing.missing) {
+          if (watch.has(t)) add({ level: "red", kind: "sticker_gap", trigger: t, quote: ing.text, source: "label" });
         }
       }
       for (const st of gaps.statements) {
-        const text = st === "may_contain" ? facts.label.may_contain : facts.label.contains;
-        for (const m of findTerms(text, facts.label.language)) {
-          if (!watch.has(m.trigger)) continue;
-          const level: Level = st === "contains" || member.traces === "avoid" ? "red" : "amber";
-          add({ level, kind: "sticker_gap", trigger: m.trigger, quote: text!, source: "label" });
+        const text = facts.label[st.kind]!;
+        for (const t of st.missing) {
+          if (!watch.has(t)) continue;
+          const level: Level = st.kind === "contains" || member.traces === "avoid" ? "red" : "amber";
+          add({ level, kind: "sticker_gap", trigger: t, quote: text, source: "label" });
         }
       }
     }
