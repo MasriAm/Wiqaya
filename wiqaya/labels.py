@@ -11,6 +11,7 @@ Never a name, an allergy profile or a location.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from wiqaya import off
@@ -295,3 +296,24 @@ def explain(gemma: Gemma, findings: list[dict], lang: str = "en") -> list[dict]:
         if text:
             out.append({"trigger": f["trigger"], "quote": f["quote"], "text": text[:300]})
     return out
+
+
+# ---------------------------------------------------------------------------------------------- expiry date
+EXPIRY_SYSTEM = """You read the expiry date printed on a medicine box or auto-injector, for a reminder. Copy the date
+that follows EXP, Expiry, Use by, or انتهاء. Ignore the manufacturing date (MFG, Mfd, LOT). If no expiry date is
+readable, answer null. Write the date as YYYY-MM-DD; a date with only a month and year means the last day of that
+month."""
+
+EXPIRY_SCHEMA = {
+    "type": "object",
+    "properties": {"expiry": {"type": ["string", "null"]}, "printed": {"type": ["string", "null"]}},
+    "required": ["expiry", "printed"],
+}
+
+
+def expiry(gemma: Gemma, image_b64: str) -> dict:
+    """``{"expiry": "YYYY-MM-DD" | None, "printed": the text as printed}``. The phone asks the parent to confirm."""
+    answer, _ = gemma.json(EXPIRY_SYSTEM, "The photo:", EXPIRY_SCHEMA, images=[image_b64], num_predict=128)
+    date = str(answer.get("expiry") or "")
+    ok = re.fullmatch(r"20\d\d-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])", date)
+    return {"expiry": date if ok else None, "printed": (str(answer.get("printed") or "")[:40] or None)}

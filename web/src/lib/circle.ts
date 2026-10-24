@@ -7,7 +7,7 @@ import type { AppState, AskRequest, Circle, Person, Profile, ScanRecord } from "
 
 export type Message =
   | { t: "hello"; id: string; from: Person }
-  | { t: "profiles"; id: string; v: number; members: Profile[]; safe: SafeEntry[]; sig?: string }
+  | { t: "profiles"; id: string; v: number; members: Profile[]; safe: SafeEntry[]; family?: string; sig?: string }
   | { t: "scan"; id: string; by: Person; at: number; name: string | null; levels: Record<string, Level> }
   | { t: "ask"; id: string; from: Person; at: number; scan: ScanRecord; member_ids: string[] }
   | { t: "answer"; id: string; ask: string; by: string; at: number; decision: "approved" | "refused"; note: string; safe: SafeEntry[]; sig?: string }
@@ -101,7 +101,7 @@ async function apply(s: AppState, msg: Message, circle: Circle, notices: string[
     case "profiles":
       if (msg.v <= s.profilesVersion || !(await signedByParent(circle, msg))) return s;
       if (s.profilesVersion > 0) notices.push(["newProfiles"]);
-      return { ...s, members: msg.members, safe: msg.safe ?? s.safe, profilesVersion: msg.v };
+      return { ...s, members: msg.members, safe: msg.safe ?? s.safe, familyName: msg.family ?? s.familyName, profilesVersion: msg.v };
     case "scan":
       if (mine(msg.by.id) || s.feed.some((f) => f.id === msg.id)) return s;
       return { ...s, feed: [{ id: msg.id, at: msg.at, by: msg.by, name: msg.name, levels: msg.levels }, ...s.feed] };

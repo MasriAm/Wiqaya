@@ -126,6 +126,21 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
         facts["seconds"] = round(time.perf_counter() - t0, 1)
         return facts
 
+    @app.post("/api/expiry")
+    async def expiry(photo: Annotated[UploadFile, File()]) -> dict:
+        """A photo of the epinephrine pen's box → the expiry date printed on it, for the reminder."""
+        data = await photo.read(SETTINGS.max_upload + 1)
+        if len(data) > SETTINGS.max_upload:
+            raise HTTPException(413, "photo_too_large")
+        try:
+            image = b64(clean(data))
+        except BadImage as e:
+            raise HTTPException(400, "not_an_image") from e
+        try:
+            return labels.expiry(g(), image)
+        except GemmaError as e:
+            raise HTTPException(503, "gemma_unavailable") from e
+
     @app.post("/api/research")
     def research(body: ResearchIn) -> dict:
         try:
@@ -165,7 +180,8 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
                 raise HTTPException(404, "not_found")
             f = (WEB / path).resolve()
             if path and f.is_file() and WEB.resolve() in f.parents:
-                return FileResponse(f)
+                # the service worker must be fetched fresh, or a phone keeps an old app
+                return FileResponse(f, headers={"Cache-Control": "no-cache"} if path == "sw.js" else None)
             return FileResponse(WEB / "index.html", headers={"Cache-Control": "no-cache"})
 
     @app.middleware("http")

@@ -1,125 +1,192 @@
+import { useState } from "react";
 import type { Level } from "../engine/types.ts";
-import { ago } from "../i18n.ts";
+import { ago, pillWord, shortDate } from "../i18n.ts";
 import { useApp } from "../App.tsx";
-import { Icon, Initial } from "../ui.tsx";
-import { summary } from "./ProfileEditor.tsx";
+import { Avatar, Heading, HeroArt, Icon, Lines, Pill, ProductThumb } from "../ui.tsx";
+import { MemberCard } from "./ProfileEditor.tsx";
+import { worst } from "./Result.tsx";
+
+const DAY = 86400_000;
+
+/** Days until each member's epinephrine pen expires, for the ones within 30 days (or past). */
+export function penReminders(members: { id: string; name: string; emergency: { epi_expiry: string } }[]) {
+  return members
+    .map((m) => ({ m, at: m.emergency.epi_expiry ? Date.parse(m.emergency.epi_expiry) : NaN }))
+    .filter((x) => !Number.isNaN(x.at) && x.at - Date.now() < 30 * DAY)
+    .map((x) => ({ ...x, days: Math.ceil((x.at - Date.now()) / DAY) }));
+}
 
 export function Home() {
-  const { t, go, state, isParent, me } = useApp();
+  const { t, go, state, isParent, me, invite } = useApp();
   const lang = state.lang;
-  const waiting = state.requests.filter((r) => r.status === "waiting" && (isParent || r.from.id === me?.id));
+  const [all, setAll] = useState(false);
+  const waiting = state.requests.filter((r) => r.status === "waiting" && (isParent ? r.from.id !== me?.id : r.from.id === me?.id));
   const answered = state.requests.filter((r) => r.status !== "waiting" && r.from.id === me?.id && Date.now() - r.at < 36 * 3600_000);
-  const soon = state.members.filter((m) => {
-    const d = m.emergency.epi_expiry ? Date.parse(m.emergency.epi_expiry) : NaN;
-    return !Number.isNaN(d) && d - Date.now() < 30 * 86400_000;
-  });
-  type Row = { id: string; at: number; by: string; name: string | null; levels: Record<string, Level>; own: boolean };
+  const pens = penReminders(state.members);
+
+  type Row = { id: string; at: number; by: string; name: string | null; level: Level; own: boolean; thumb?: string };
   const rows: Row[] = [
-    ...state.scans.map((s) => ({ id: s.id, at: s.at, by: s.by.name, name: s.facts.name, levels: Object.fromEntries(s.verdicts.map((v) => [v.member_id, v.level])), own: true })),
-    ...state.feed.map((f) => ({ id: f.id, at: f.at, by: f.by.name, name: f.name, levels: f.levels, own: false })),
-  ].sort((a, b) => b.at - a.at).slice(0, 12);
+    ...state.scans.map((s) => ({ id: s.id, at: s.at, by: s.by.id === me?.id ? t("you") : s.by.name, name: s.facts.name, level: worst(s.verdicts.map((v) => v.level)), own: true, thumb: s.thumb })),
+    ...state.feed.map((f) => ({ id: f.id, at: f.at, by: f.by.name, name: f.name, level: worst(Object.values(f.levels)), own: false })),
+  ].sort((a, b) => b.at - a.at);
+  const shown = all ? rows.slice(0, 30) : rows.slice(0, 4);
+
+  const hour = new Date().getHours();
+  const greet = t(hour < 12 ? "greetMorning" : hour < 18 ? "greetAfternoon" : "greetEvening", { name: me?.name ?? "" });
+  const today = new Date().toLocaleDateString(lang === "ar" ? "ar-JO" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <>
-      <header className="top">
-        <span className="wordmark" style={{ flex: 1 }}>
-          {lang === "ar" ? "وقاية" : "Wiqaya"} <small lang={lang === "ar" ? "en" : "ar"}>{lang === "ar" ? "Wiqaya" : "وقاية"}</small>
-        </span>
-        <button className="sos" onClick={() => go({ name: "emergency" })}>
-          <Icon name="cross" />
-          {t("emergency")}
+      <Heading eyebrow={t("homeEyebrow")} title={`${greet} 👋`} lead={t("homeLead")} extra={<span className="date">{today}</span>} />
+
+      {waiting.map((r) => (
+        <button key={r.id} className="warning request-card" onClick={() => go(isParent ? { name: "request", id: r.id } : { name: "result", id: r.scan.id })}>
+          <Avatar name={r.from.name} i={2} />
+          <span>
+            <b>{t("requestFrom", { name: r.from.name, product: r.scan.facts.name ?? t("unnamedProduct") })}</b>
+            <br />
+            <small>{isParent ? t("requestOpen") : t("askWaiting")} · {ago(lang, r.at)}</small>
+          </span>
+          <Icon name="arrow" />
         </button>
-        <button className="icon-btn" onClick={() => go({ name: "settings" })} aria-label={t("settings")}>
-          <Icon name="settings" />
+      ))}
+      {answered.map((r) => (
+        <button key={r.id} className={`answer-card ${r.status === "approved" ? "ok" : "no"}`} onClick={() => go({ name: "result", id: r.scan.id })}>
+          <Pill level={r.status === "approved" ? "green" : "red"}>{t(r.status === "approved" ? "answerApproved" : "answerRefused")}</Pill>
+          <span>
+            {t("requestAnswered", { by: r.answeredBy ?? "", answer: t(r.status === "approved" ? "answerApproved" : "answerRefused") })} · <b>{r.scan.facts.name ?? t("unnamedProduct")}</b>
+            {r.note && (
+              <>
+                <br />
+                <small>“{r.note}”</small>
+              </>
+            )}
+          </span>
         </button>
-      </header>
-      <main className="page">
-        {soon.map((m) => (
-          <div key={m.id} className="card request" role="status">
-            {t("epiSoon", { name: m.name, date: new Date(m.emergency.epi_expiry).toLocaleDateString(lang === "ar" ? "ar-JO" : "en-GB") })}
+      ))}
+
+      <div className="dashboard">
+        <div>
+          <section className="hero">
+            <div className="hero-text">
+              <h2>
+                <Lines text={t("heroTitle")} />
+              </h2>
+              <p>
+                <Lines text={t("heroText")} />
+              </p>
+              <button className="primary" onClick={() => go({ name: "scan" })}>
+                <Icon name="scan" /> {t("navScan")} <Icon name="arrow" />
+              </button>
+              <div className="hero-hint">{t("heroHint")}</div>
+            </div>
+            <HeroArt />
+          </section>
+
+          <div className="section-title">
+            <h2>
+              {t("circleTitle")} {state.familyName && <span className="muted-title">/ {state.familyName}</span>}
+            </h2>
+            <button className="text-button" onClick={() => go({ name: "family" })}>
+              {t("manageFamily")} ↗
+            </button>
           </div>
-        ))}
-
-        {waiting.map((r) => (
-          <button key={r.id} className="card request row" style={{ textAlign: "start", cursor: "pointer" }} onClick={() => go(isParent ? { name: "request", id: r.id } : { name: "result", id: r.scan.id })}>
-            <Initial name={r.from.name} />
-            <span className="grow">
-              <strong>{t("requestFrom", { name: r.from.name, product: r.scan.facts.name ?? t("unnamedProduct") })}</strong>
-              <br />
-              <span className="small muted">{isParent ? t("requestOpen") : t("askWaiting")} · {ago(lang, r.at)}</span>
-            </span>
-          </button>
-        ))}
-        {answered.map((r) => (
-          <button key={r.id} className="card row" style={{ textAlign: "start", cursor: "pointer" }} onClick={() => go({ name: "result", id: r.scan.id })}>
-            <span className={`dot ${r.status === "approved" ? "green" : "red"}`} />
-            <span className="grow">
-              {t("requestAnswered", { by: r.answeredBy ?? "", answer: t(r.status === "approved" ? "answerApproved" : "answerRefused") })}
-              {" — "}
-              <strong>{r.scan.facts.name ?? t("unnamedProduct")}</strong>
-              {r.note && <><br /><span className="small">“{r.note}”</span></>}
-            </span>
-          </button>
-        ))}
-
-        <button className="btn primary big block" onClick={() => go({ name: "scan" })}>
-          <Icon name="scan" />
-          {t("scan")}
-        </button>
-
-        <section className="card">
-          <h2>{t("membersTitle")}</h2>
           {state.members.length === 0 ? (
-            <p className="muted small">{t("updateWaiting")}</p>
+            <p className="big-card small-note">{t("waitingProfiles")}</p>
           ) : (
-            <ul className="list">
-              {state.members.map((m) => (
-                <li key={m.id}>
-                  <Initial name={m.name} />
-                  <span className="grow">
-                    <strong>{m.name}</strong>
-                    <br />
-                    <span className="small muted">{summary(lang, m)}</span>
-                  </span>
-                </li>
+            <div className="family-row">
+              {state.members.map((m, i) => (
+                <MemberCard key={m.id} p={m} i={i} onClick={() => go(isParent ? { name: "member", id: m.id } : { name: "care", tab: "emergency", id: m.id })} />
               ))}
-            </ul>
+            </div>
           )}
-        </section>
 
-        <section className="card">
-          <h2>{t("recent")}</h2>
-          {rows.length === 0 ? (
-            <p className="muted small">{t("recentEmpty")}</p>
-          ) : (
-            <ul className="list">
-              {rows.map((r) => (
-                <li key={r.id}>
-                  <button className="item" disabled={!r.own} onClick={() => r.own && go({ name: "result", id: r.id })} style={{ cursor: r.own ? "pointer" : "default" }}>
-                    <span className="row" style={{ gap: 4 }} aria-hidden="true">
-                      {state.members.map((m) => (
-                        <span key={m.id} className={`dot ${r.levels[m.id] ?? ""}`} title={m.name} />
-                      ))}
-                    </span>
-                    <span className="grow">
-                      <strong>{r.name ?? t("unnamedProduct")}</strong>
-                      <br />
-                      <span className="small muted">
-                        {state.members
-                          .map((m) => (r.levels[m.id] ? `${m.name}: ${t(r.levels[m.id] === "red" ? "levelRedShort" : r.levels[m.id] === "amber" ? "levelAmberShort" : "levelGreenShort")}` : null))
-                          .filter(Boolean)
-                          .join(" · ")}
-                        {" · "}
-                        {t("scannedBy", { name: r.by })} · {ago(lang, r.at)}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </main>
+          <div className="section-title">
+            <h2>{t("helpTitle")}</h2>
+          </div>
+          <div className="quick-grid">
+            <button className="quick" onClick={() => go({ name: "safe" })}>
+              <span className="icon-box">
+                <Icon name="list" />
+              </span>
+              <h3>{t("quickSafe")} ↗</h3>
+              <p>{t("quickSafeSub")}</p>
+            </button>
+            <button className="quick" onClick={() => go({ name: "care", tab: "cook" })}>
+              <span className="icon-box">
+                <Icon name="cook" />
+              </span>
+              <h3>{t("quickCook")} ↗</h3>
+              <p>{t("quickCookSub")}</p>
+            </button>
+            {isParent ? (
+              <button className="quick" onClick={() => invite("caregiver")}>
+                <span className="icon-box">
+                  <Icon name="qr" />
+                </span>
+                <h3>{t("quickInvite")} ↗</h3>
+                <p>{t("quickInviteSub")}</p>
+              </button>
+            ) : (
+              <button className="quick" onClick={() => go({ name: "care", tab: "child" })}>
+                <span className="icon-box">
+                  <Icon name="face" />
+                </span>
+                <h3>{t("quickChild")} ↗</h3>
+                <p>{t("quickChildSub")}</p>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <aside className="side-column">
+          <section className="panel">
+            <div className="row spread">
+              <h3>{t("recentTitle")}</h3>
+              {rows.length > 4 && (
+                <button className="text-button" onClick={() => setAll(!all)}>
+                  {all ? t("showLess") : t("showAll")}
+                </button>
+              )}
+            </div>
+            {rows.length === 0 ? (
+              <p className="small-note" style={{ marginTop: 12 }}>{t("recentEmpty")}</p>
+            ) : (
+              shown.map((r) => (
+                <button key={r.id} className="activity wide item" disabled={!r.own} onClick={() => r.own && go({ name: "result", id: r.id })}>
+                  <ProductThumb name={r.name} thumb={r.thumb} />
+                  <div>
+                    <h4>{r.name ?? t("unnamedProduct")}</h4>
+                    <p>
+                      {ago(lang, r.at)} · {r.by}
+                    </p>
+                  </div>
+                  <Pill level={r.level}>{pillWord(lang, r.level)}</Pill>
+                </button>
+              ))
+            )}
+          </section>
+
+          {pens.map(({ m, days, at }) => (
+            <section className="notice" key={m.id}>
+              <h3>
+                <Icon name="bell" /> {t("reminderTitle")}
+              </h3>
+              <p>{days > 0 ? t("epiSoon", { name: m.name, days }) : days === 0 ? t("epiToday", { name: m.name }) : t("epiExpired", { name: m.name, date: shortDate(lang, at) })}</p>
+              <button onClick={() => go({ name: "care", tab: "emergency", id: m.id })}>{t("viewEmergencyPlan")} →</button>
+            </section>
+          ))}
+
+          <section className="privacy-card">
+            <Icon name="shield" />
+            <h3>{t("privacyCardTitle")}</h3>
+            <p>{t("privacyCardText")}</p>
+            <button className="text-button" onClick={() => go({ name: "privacy" })}>
+              {t("privacyPromise")} ↗
+            </button>
+          </section>
+        </aside>
+      </div>
     </>
   );
 }

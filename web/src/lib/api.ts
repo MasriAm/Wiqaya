@@ -39,6 +39,11 @@ export const api = {
     if (barcode) fd.append("barcode", barcode);
     return call<ProductFacts & { seconds: number }>("/api/scan", { method: "POST", body: fd });
   },
+  expiry: (photo: Blob) => {
+    const fd = new FormData();
+    fd.append("photo", photo, "box.jpg");
+    return call<{ expiry: string | null; printed: string | null }>("/api/expiry", { method: "POST", body: fd });
+  },
   research: (ingredients: string[], product_name: string | null) =>
     call<{ suspicions: Suspicion[]; tools_used: { tool: string; args: Record<string, string> }[] }>("/api/research", {
       method: "POST",

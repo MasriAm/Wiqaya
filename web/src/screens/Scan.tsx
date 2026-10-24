@@ -1,32 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { verdicts } from "../engine/verdict.ts";
 import type { ProductFacts } from "../engine/types.ts";
+import { joinNames } from "../i18n.ts";
 import { api, ApiError } from "../lib/api.ts";
 import { capture, readFile, readFrame, startCamera, stopCamera, thumbnail } from "../lib/camera.ts";
 import { newId } from "../lib/circle.ts";
 import type { ScanRecord } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
-import { Icon, Sheet, Spinner, Top } from "../ui.tsx";
+import { Heading, Icon, Modal, Spinner } from "../ui.tsx";
 
+type Which = "original" | "sticker";
 type Step =
   | { s: "barcode" }
-  | { s: "photo"; which: "original" | "sticker" }
-  | { s: "preview"; which: "original" | "sticker"; blob: Blob; url: string }
+  | { s: "photo"; which: Which }
+  | { s: "preview"; which: Which; blob: Blob; url: string }
   | { s: "sticker?" }
   | { s: "checking"; stage: "lookup" | "read" | "compare" | "check" };
 
 interface Photo {
   blob: Blob;
-  hint: "original" | "sticker" | "";
+  hint: Which;
 }
 
 /** The scan flow: barcode first; if the product or its ingredients aren't known, photos of the label (and the
  * Arabic sticker); then the check, on this phone. */
 export function Scan({ barcode: known }: { barcode?: string }) {
-  const { t, back, go, state, update, share, me, health } = useApp();
+  const { t, go, state, update, share, me, health } = useApp();
   // a barcode passed in (from "Photograph the label too") starts at the label photo
   const [step, setStep] = useState<Step>(known ? { s: "photo", which: "original" } : { s: "barcode" });
   const [barcode, setBarcode] = useState<string | null>(known ?? null);
+  const [skipped, setSkipped] = useState(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +93,8 @@ export function Scan({ barcode: known }: { barcode?: string }) {
         if (stageTimer) clearTimeout(stageTimer);
         await finish(facts, list[0].blob);
       } catch (e) {
-        const code = (e as ApiError).message;
-        setError(code === "gemma_unavailable" ? t("gemmaDown") : code === "offline" ? t("offline") : t("errorGeneric", { msg: code }));
+        const c = (e as ApiError).message;
+        setError(c === "gemma_unavailable" ? t("gemmaDown") : c === "offline" ? t("offline") : t("errorGeneric", { msg: c }));
         setStep({ s: "sticker?" });
       } finally {
         busy.current = false;
@@ -145,17 +148,19 @@ export function Scan({ barcode: known }: { barcode?: string }) {
   }, [step.s, lookUp]);
 
   const takePhoto = async () => {
-    if (!video.current || step.s !== "photo") return;
+    if (!video.current || step.s !== "photo" || !video.current.videoWidth) return;
     const blob = await capture(video.current);
     setStep({ s: "preview", which: step.which, blob, url: URL.createObjectURL(blob) });
   };
 
   const onFile = async (file: File | undefined) => {
+    if (fileInput.current) fileInput.current.value = "";
     if (!file) return;
     if (step.s === "barcode") {
       // a photo chosen at the barcode step: try for a barcode, else treat it as the ingredient list
       const code = await readFile(file).catch(() => null);
       if (code) return lookUp(code);
+      setSkipped(true);
       setStep({ s: "preview", which: "original", blob: file, url: URL.createObjectURL(file) });
       return;
     }
@@ -165,7 +170,7 @@ export function Scan({ barcode: known }: { barcode?: string }) {
 
   const usePhoto = () => {
     if (step.s !== "preview") return;
-    const list = [...photos.filter((p) => p.hint !== step.which), { blob: step.blob, hint: step.which } as Photo];
+    const list = [...photos.filter((p) => p.hint !== step.which), { blob: step.blob, hint: step.which }];
     setPhotos(list);
     URL.revokeObjectURL(step.url);
     if (step.which === "sticker") readPhotos(list, barcode);
@@ -173,129 +178,161 @@ export function Scan({ barcode: known }: { barcode?: string }) {
   };
 
   const gemmaReady = health?.gemma.available !== false;
-  const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p.blob)), [photos]);
-  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
-  const names = state.members.map((m) => m.name).join(state.lang === "ar" ? "، " : ", ");
+  const previews = useMemo(() => photos.map((p) => ({ hint: p.hint, url: URL.createObjectURL(p.blob) })), [photos]);
+  useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
+  const names = joinNames(state.lang, state.members.map((m) => m.name));
+  const hasOriginal = photos.some((p) => p.hint === "original");
+  const hasSticker = photos.some((p) => p.hint === "sticker");
+
+  // which tab is showing
+  const tab = step.s === "barcode" ? 0 : step.s === "photo" || step.s === "preview" ? (step.which === "original" ? 1 : 2) : 2;
+  const checking = step.s === "checking";
+  const shownPhoto = step.s === "preview" ? step.url : checking || step.s === "sticker?" ? previews.find((p) => p.hint === "original")?.url : undefined;
 
   return (
     <>
-      <Top title={t("scan")} onBack={back} backLabel={t("back")} />
-      <main className="page">
+      <Heading eyebrow={t("scanEyebrow")} title={t("scanTitle")} lead={t("scanLead")} />
+      <div className="content stack">
         <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0] ?? undefined)} />
+        <div className="row spread">
+          <button className="secondary" onClick={() => go({ name: "home" }, true)}>
+            ✕ {t("close")}
+          </button>
+          <span className="exif-note">
+            <Icon name="lock" /> {t("exifNote")}
+          </span>
+        </div>
 
-        {live && (
-          <>
-            {step.s === "photo" && (
-              <>
-                <h2 className="big">{t(step.which === "sticker" ? "stickerStepTitle" : "photoStepTitle")}</h2>
-                {note && step.which === "original" && <p className="card small" role="status">{note}</p>}
-                {!gemmaReady && <p className="card small request" role="alert">{t("gemmaDown")}</p>}
-                <p className="lead small">{t("photoStepLead")}</p>
-              </>
-            )}
-            {cameraError ? (
-              <p className="card" role="alert">{t("scanNoCamera")}</p>
-            ) : (
-              <div className="camera">
-                <video ref={video} playsInline muted aria-label={t(step.s === "barcode" ? "scanHint" : "photoStepTitle")} />
-                <div className={`frame ${step.s === "photo" ? "label" : ""}`} />
-                {step.s === "barcode" && <div className="hint">{t("scanHint")}</div>}
-                {step.s === "photo" && <button className="shutter" onClick={takePhoto} aria-label={t("takePhoto")} />}
-              </div>
-            )}
-            {step.s === "barcode" ? (
-              <div className="stack">
-                <button className="btn block" onClick={() => setStep({ s: "photo", which: "original" })}>
-                  <Icon name="camera" />
-                  {t("photoLabel")}
-                </button>
-                <div className="row">
-                  <button className="btn grow" onClick={() => fileInput.current?.click()}>
-                    <Icon name="image" />
-                    {t("photoGallery")}
-                  </button>
-                  <button className="btn grow" onClick={() => setTyping(true)}>
-                    <Icon name="keyboard" />
-                    {t("typeBarcode")}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button className="btn block" onClick={() => fileInput.current?.click()}>
-                <Icon name="image" />
-                {t("photoGallery")}
-              </button>
-            )}
-          </>
+        <div className="segmented" role="tablist">
+          {[t("tabBarcode"), t("tabOriginal"), t("tabSticker")].map((label, i) => (
+            <button
+              key={label}
+              role="tab"
+              aria-selected={tab === i}
+              className={tab === i ? "active" : ""}
+              disabled={checking || (i === 2 && !hasOriginal)}
+              onClick={() => setStep(i === 0 ? { s: "barcode" } : { s: "photo", which: i === 1 ? "original" : "sticker" })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {cameraError && live ? (
+          <div className="warning" role="alert">{t("scanNoCamera")}</div>
+        ) : (
+          <div className={`camera ${checking ? "checking" : ""}`}>
+            {live && <video ref={video} playsInline muted aria-label={t(step.s === "barcode" ? "scanHint" : "photoHint")} />}
+            {shownPhoto && !live && <img src={shownPhoto} alt="" />}
+            <span className="camera-hint">
+              {step.s === "barcode" ? t("scanHint") : step.s === "photo" && step.which === "sticker" ? t("stickerHint") : t("photoHint")}
+            </span>
+            {checking && <div className="scanline" aria-hidden="true" />}
+          </div>
+        )}
+
+        {note && step.s === "photo" && step.which === "original" && <div className="warning" role="status">{note}</div>}
+        {!gemmaReady && step.s !== "barcode" && <div className="warning" role="alert">{t("gemmaDown")}</div>}
+        {error && <div className="danger-box" role="alert">{error}</div>}
+
+        <div className="steps" aria-hidden={checking}>
+          <div className={tab === 0 && !checking ? "current" : "done"}>
+            {barcode ? `✓ ${t("stepFound", { code: barcode })}` : skipped || tab > 0 ? `– ${t("stepSkipped")}` : `① ${t("tabBarcode")}`}
+          </div>
+          <div className={tab === 1 && !checking ? "current" : hasOriginal ? "done" : ""}>
+            {hasOriginal ? `✓ ${t("tabOriginal")}` : `② ${t("tabOriginal")}`}
+            {hasOriginal && <small>{t("stepDone")}</small>}
+          </div>
+          <div className={(tab === 2 || step.s === "sticker?") && !checking ? "current" : hasSticker ? "done" : ""}>
+            {hasSticker ? `✓ ${t("tabSticker")}` : `③ ${t("stepAdd")}`}
+          </div>
+        </div>
+
+        {step.s === "barcode" && (
+          <div className="row">
+            <button className="secondary" onClick={() => setTyping(true)}>
+              <Icon name="keyboard" /> {t("typeBarcode")}
+            </button>
+            <button className="secondary" onClick={() => fileInput.current?.click()}>
+              <Icon name="image" /> {t("uploadPhoto")}
+            </button>
+            <button className="primary" onClick={() => {
+              setSkipped(true);
+              setStep({ s: "photo", which: "original" });
+            }}>
+              <Icon name="camera" /> {t("noBarcode")}
+            </button>
+          </div>
+        )}
+
+        {step.s === "photo" && (
+          <div className="row">
+            <button className="primary" onClick={takePhoto} disabled={cameraError}>
+              <Icon name="camera" /> {t("takePhoto")}
+            </button>
+            <button className="secondary" onClick={() => fileInput.current?.click()}>
+              <Icon name="image" /> {t("uploadPhoto")}
+            </button>
+          </div>
         )}
 
         {step.s === "preview" && (
-          <>
-            <h2 className="big">{t(step.which === "sticker" ? "stickerStepTitle" : "photoStepTitle")}</h2>
-            <div className="camera" style={{ aspectRatio: "auto", maxHeight: "60dvh" }}>
-              <img src={step.url} alt="" style={{ objectFit: "contain", background: "#111" }} />
-            </div>
-            <div className="row">
-              <button className="btn grow" onClick={() => setStep({ s: "photo", which: step.which })}>
-                {t("retake")}
-              </button>
-              <button className="btn primary grow" onClick={usePhoto}>
-                {t("usePhoto")}
-              </button>
-            </div>
-          </>
+          <div className="row">
+            <button className="secondary" onClick={() => setStep({ s: "photo", which: step.which })}>
+              {t("retake")}
+            </button>
+            <button className="primary" onClick={usePhoto}>
+              {t("usePhoto")} <Icon name="arrow" />
+            </button>
+          </div>
         )}
 
         {step.s === "sticker?" && (
-          <>
-            {error && <p className="card request" role="alert">{error}</p>}
-            <div className="thumbs">
-              {previews.map((u) => (
-                <img key={u} src={u} alt="" />
-              ))}
+          <section className="big-card">
+            <h3>{t("stickerQuestion")}</h3>
+            <div className="row" style={{ marginTop: 16 }}>
+              <button className="secondary" onClick={() => setStep({ s: "photo", which: "sticker" })}>
+                <Icon name="camera" /> {t("stickerYes")}
+              </button>
+              <button className="primary" onClick={() => readPhotos(photos.filter((p) => p.hint === "original"), barcode)}>
+                {t("checkNow")} <Icon name="arrow" />
+              </button>
             </div>
-            <h2 className="big">{t("stickerQuestion")}</h2>
-            <button className="btn block" onClick={() => setStep({ s: "photo", which: "sticker" })}>
-              <Icon name="camera" />
-              {t("stickerYes")}
-            </button>
-            <button className="btn primary big block" onClick={() => readPhotos(photos.filter((p) => p.hint === "original"), barcode)}>
-              {t("stickerNo")}
-            </button>
-          </>
+          </section>
         )}
 
         {step.s === "checking" && (
-          <section className="card stack" aria-live="polite">
-            <h2 className="big">{t("checking")}</h2>
-            <ol className="steps">
+          <section className="big-card" aria-live="polite">
+            <h2>{t("checking")}</h2>
+            <ol className="progress">
               {barcode && <StepLine state={step.stage === "lookup" ? "active" : "done"} text={t("stepLookup")} />}
-              {step.stage !== "lookup" && photos.length > 0 && (
-                <StepLine state={step.stage === "read" ? "active" : "done"} text={t("stepRead")} />
-              )}
+              {step.stage !== "lookup" && photos.length > 0 && <StepLine state={step.stage === "read" ? "active" : "done"} text={t("stepRead")} />}
               {photos.length > 1 && step.stage !== "lookup" && (
                 <StepLine state={step.stage === "compare" ? "active" : step.stage === "check" ? "done" : "todo"} text={t("stepCompare")} />
               )}
               <StepLine state={step.stage === "check" ? "active" : "todo"} text={t("stepCheck", { names })} />
             </ol>
-            {step.stage !== "lookup" && <p className="small muted">{t("slowNote")}</p>}
+            {step.stage !== "lookup" && <p className="small-note">{t("slowNote")}</p>}
           </section>
         )}
-      </main>
+      </div>
 
       {typing && (
-        <Sheet title={t("typeBarcode")} onClose={() => setTyping(false)} closeLabel={t("close")}>
-          <label className="field">
-            {t("barcodePh")}
-            <input inputMode="numeric" dir="ltr" autoFocus value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, ""))} />
-          </label>
-          <button className="btn primary block" disabled={typed.length < 6} onClick={() => {
+        <Modal label={t("typeBarcode")} onClose={() => setTyping(false)} closeLabel={t("close")}>
+          <h2>{t("typeBarcode")}</h2>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (typed.length < 6) return;
             setTyping(false);
             lookUp(typed);
           }}>
-            {t("lookUp")}
-          </button>
-        </Sheet>
+            <label className="field" htmlFor="code">{t("barcodePh")}</label>
+            <input id="code" type="text" inputMode="numeric" dir="ltr" autoFocus value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, ""))} />
+            <button className="primary wide" type="submit" style={{ marginTop: 16 }} disabled={typed.length < 6}>
+              {t("lookUp")}
+            </button>
+          </form>
+        </Modal>
       )}
     </>
   );

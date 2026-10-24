@@ -1,17 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { SafeEntry } from "./engine/types.ts";
 import { api, type Health } from "./lib/api.ts";
 import { applyOwn, newId, parseInvite, pull, send, type Message } from "./lib/circle.ts";
-import { EMPTY, load, save, type AppState, type Person } from "./lib/state.ts";
+import { EMPTY, load, save, type AppState, type Person, type Profile } from "./lib/state.ts";
 import { t as translate, type Key } from "./i18n.ts";
-import { Icon, Toast } from "./ui.tsx";
+import { Avatar, Icon, Toast } from "./ui.tsx";
 import { Join, Setup, Welcome } from "./screens/Onboarding.tsx";
 import { Home } from "./screens/Home.tsx";
 import { Scan } from "./screens/Scan.tsx";
 import { Result } from "./screens/Result.tsx";
-import { CookCard, Family, InviteScreen, MemberEdit } from "./screens/Family.tsx";
+import { Family, InviteModal, MemberEdit } from "./screens/Family.tsx";
+import { SafeList } from "./screens/SafeList.tsx";
+import { Care, type CareTab } from "./screens/Care.tsx";
 import { RequestScreen } from "./screens/Request.tsx";
-import { Emergency } from "./screens/Emergency.tsx";
-import { Settings } from "./screens/Settings.tsx";
+import { Privacy } from "./screens/Privacy.tsx";
 
 export type Route =
   | { name: "welcome" }
@@ -22,11 +24,10 @@ export type Route =
   | { name: "result"; id: string }
   | { name: "family" }
   | { name: "member"; id: string }
-  | { name: "invite"; role: "parent" | "caregiver" }
-  | { name: "cook"; id: string }
+  | { name: "safe" }
+  | { name: "care"; tab: CareTab; id?: string }
   | { name: "request"; id: string }
-  | { name: "emergency"; id?: string }
-  | { name: "settings" };
+  | { name: "privacy" };
 
 export interface Ctx {
   state: AppState;
@@ -37,6 +38,9 @@ export interface Ctx {
   toast: (text: string) => void;
   /** Send to the family and apply here at once. */
   share: (msg: Message) => Promise<void>;
+  /** A parent publishes the family's profiles (signed, versioned). */
+  publishProfiles: (members: Profile[], safe?: SafeEntry[], family?: string) => Promise<void>;
+  invite: (role: "parent" | "caregiver") => void;
   isParent: boolean;
   me: Person | null;
   health: Health | null;
@@ -50,6 +54,7 @@ export function App() {
   const [route, setRoute] = useState<Route>({ name: "home" });
   const [toastText, setToast] = useState<string | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [inviting, setInviting] = useState<"parent" | "caregiver" | null>(null);
   const stateRef = useRef<AppState>(EMPTY);
 
   // load, then decide the first screen (an invite in the link wins)
@@ -89,7 +94,7 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-    document.title = lang === "ar" ? "وقاية" : "Wiqaya";
+    document.title = lang === "ar" ? "وقاية · عائلتكم أكثر أمانًا" : "Wiqaya · Your family, a little safer";
   }, [lang]);
 
   const t = useCallback((key: Key, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
@@ -106,6 +111,12 @@ export function App() {
     }
   }, [update]);
 
+  const publishProfiles = useCallback(async (members: Profile[], safe?: SafeEntry[], family?: string) => {
+    const s = stateRef.current;
+    const keep = (safe ?? s.safe).filter((e) => members.some((m) => m.id === e.member_id));
+    await share({ t: "profiles", id: newId(), v: s.profilesVersion + 1, members, safe: keep, family: family ?? s.familyName });
+  }, [share]);
+
   // the family's messages: every 4 s while the app is open
   useEffect(() => {
     if (!state?.circle) return;
@@ -120,7 +131,7 @@ export function App() {
           const newcomer = next.people.length > before.people.length;
           update(() => next);
           if (newcomer && next.me?.role === "parent" && next.circle?.parentPriv) {
-            await send(next.circle, { t: "profiles", id: newId(), v: next.profilesVersion, members: next.members, safe: next.safe });
+            await send(next.circle, { t: "profiles", id: newId(), v: next.profilesVersion, members: next.members, safe: next.safe, family: next.familyName });
           }
         }
         if (notices.length) setToast(notices.map(([k, ...v]) => translate(next.lang, k as Key, Object.fromEntries(pairs(v)))).join(" · "));
@@ -146,22 +157,47 @@ export function App() {
         t,
         toast: setToast,
         share,
+        publishProfiles,
+        invite: setInviting,
         isParent: state.me?.role === "parent",
         me: state.me,
         health,
       },
-    [state, update, go, back, t, share, health],
+    [state, update, go, back, t, share, publishProfiles, health],
   );
 
   if (!ctx) return null;
-  const tabs = ["home", "family", "settings"].includes(route.name) || route.name === "scan";
+  const onboarding = !ctx.me || route.name === "welcome" || route.name === "setup" || route.name === "join";
   return (
     <AppCtx.Provider value={ctx}>
-      <div className="app">
-        <Screen route={route} />
-        {tabs && ctx.me && <Nav route={route} />}
-        {toastText && <Toast text={toastText} onDone={() => setToast(null)} />}
-      </div>
+      {onboarding ? (
+        <div className="shell bare">
+          <header className="topbar">
+            <Logo />
+            <div className="top-actions">
+              <LangToggle />
+            </div>
+          </header>
+          <main className="main">
+            <Screen route={route} />
+            <Footer />
+          </main>
+        </div>
+      ) : (
+        <>
+          <Sidebar route={route} />
+          <div className="shell">
+            <TopBar route={route} />
+            <main className="main" id="main">
+              <Screen route={route} />
+              <Footer />
+            </main>
+          </div>
+          <MobileNav route={route} />
+        </>
+      )}
+      {inviting && <InviteModal role={inviting} onClose={() => setInviting(null)} />}
+      {toastText && <Toast text={toastText} onDone={() => setToast(null)} />}
     </AppCtx.Provider>
   );
 }
@@ -190,39 +226,155 @@ function Screen({ route }: { route: Route }) {
       return <Family />;
     case "member":
       return <MemberEdit id={route.id} />;
-    case "invite":
-      return <InviteScreen role={route.role} />;
-    case "cook":
-      return <CookCard id={route.id} />;
+    case "safe":
+      return <SafeList />;
+    case "care":
+      return <Care tab={route.tab} id={route.id} />;
     case "request":
       return <RequestScreen id={route.id} />;
-    case "emergency":
-      return <Emergency id={route.id} />;
-    case "settings":
-      return <Settings />;
+    case "privacy":
+      return <Privacy />;
   }
 }
 
-function Nav({ route }: { route: Route }) {
-  const { go, t } = useApp();
-  const tab = (name: "home" | "family" | "settings", icon: string, label: string) => (
-    <button onClick={() => go({ name } as Route, true)} aria-current={route.name === name ? "page" : undefined}>
-      <Icon name={icon} />
-      {label}
+// ------------------------------------------------------------------------------------------------ the shell
+type NavItem = { route: Route; icon: string; label: Key; short: Key; match: Route["name"][] };
+// "Tell the cook" is the care screen's cook tab; emergency and child mode have no tab of their own
+const active = (n: NavItem, r: Route) => n.match.includes(r.name) && (r.name !== "care" || r.tab === "cook");
+const NAV: NavItem[] = [
+  { route: { name: "home" }, icon: "home", label: "navHome", short: "navHome", match: ["home", "result", "request"] },
+  { route: { name: "scan" }, icon: "scan", label: "navScan", short: "navScanShort", match: ["scan"] },
+  { route: { name: "family" }, icon: "family", label: "navFamily", short: "navFamilyShort", match: ["family", "member"] },
+  { route: { name: "safe" }, icon: "list", label: "navSafe", short: "navSafe", match: ["safe"] },
+  { route: { name: "care", tab: "cook" }, icon: "cook", label: "navCook", short: "navCookShort", match: ["care"] },
+];
+
+function Logo() {
+  const { go, me } = useApp();
+  return (
+    <button className="logo" onClick={() => go({ name: me ? "home" : "welcome" })} aria-label="Wiqaya, وقاية">
+      <span className="logo-mark">
+        <Icon name="shield" />
+      </span>
+      wiqaya <small lang="ar">وقاية</small>
     </button>
   );
+}
+
+function LangToggle() {
+  const { state, update } = useApp();
+  const ar = state.lang === "ar";
   return (
-    <nav className="nav" aria-label="Main">
-      <div className="nav-inner">
-        {tab("home", "home", t("home"))}
-        <button className="scan-tab" onClick={() => go({ name: "scan" })} aria-current={route.name === "scan" ? "page" : undefined}>
-          <span className="disc">
-            <Icon name="scan" />
-          </span>
-          {t("scanShort")}
+    <button className="language" onClick={() => update((s) => ({ ...s, lang: ar ? "en" : "ar" }))} aria-label={ar ? "English" : "العربية"}>
+      {ar ? <span>EN</span> : <b>EN</b>}
+      <span className="sep" aria-hidden="true">|</span>
+      {ar ? <b lang="ar">عربي</b> : <span lang="ar">عربي</span>}
+    </button>
+  );
+}
+
+function Sidebar({ route }: { route: Route }) {
+  const { t, go, state } = useApp();
+  return (
+    <aside className="sidebar">
+      <Logo />
+      <div className="tagline">{t("brandTagline")}</div>
+      <div className="nav-label">{t("navLabel")}</div>
+      <nav className="nav" aria-label={t("navLabel")}>
+        {NAV.map((n) => (
+          <button key={n.label} className={active(n, route) ? "active" : ""} aria-current={active(n, route) ? "page" : undefined} onClick={() => go(n.route)}>
+            <Icon name={n.icon} />
+            {t(n.label)}
+            {n.route.name === "family" && state.members.length > 0 && <span className="count">{state.members.length}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-bottom">
+        <button className="circle-mini" onClick={() => go({ name: "family" })}>
+          <div className="circle-name">
+            <span className="dot" />
+            {state.familyName ? t("circleOf", { name: state.familyName }) : t("circleDefault")}
+          </div>
+          <div className="mini-avatars">
+            {state.members.slice(0, 5).map((m, i) => (
+              <Avatar key={m.id} name={m.name} emoji={m.avatar} i={i} />
+            ))}
+          </div>
+          <small>{t("circleTogether")}</small>
         </button>
-        {tab("family", "family", t("family"))}
+        <button className="sidebar-foot" onClick={() => go({ name: "privacy" })}>
+          <Icon name="lock" /> {t("privacyData")}
+        </button>
       </div>
+    </aside>
+  );
+}
+
+function TopBar({ route }: { route: Route }) {
+  const { t, go, me } = useApp();
+  const current = NAV.find((n) => active(n, route));
+  const page = route.name === "care" ? t(route.tab === "emergency" ? "tabEmergency" : route.tab === "child" ? "tabChild" : "tabCook") : route.name === "privacy" ? t("privacyData") : current && route.name !== "home" ? t(current.label) : null;
+  return (
+    <header className="topbar">
+      <div className="crumb">
+        <Icon name="home" />
+        <span className="sep">/</span>
+        <span>{t("crumbRoot")}</span>
+        {page && (
+          <>
+            <span className="sep">/</span>
+            <span>{page}</span>
+          </>
+        )}
+      </div>
+      <div className="mobile-logo">
+        <Logo />
+      </div>
+      <div className="top-actions">
+        <LangToggle />
+        <button className="emergency-top" onClick={() => go({ name: "care", tab: "emergency" })}>
+          <Icon name="heart" />
+          {t("emergency")}
+        </button>
+        {me && (
+          <button className="me" onClick={() => go({ name: "privacy" })} aria-label={`${me.name} · ${t("privacyData")}`}>
+            <Avatar name={me.name} i={2} />
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function MobileNav({ route }: { route: Route }) {
+  const { t, go } = useApp();
+  return (
+    <nav className="mobile-nav" aria-label={t("navLabel")}>
+      {NAV.map((n) => (
+        <button key={n.label} className={active(n, route) ? "active" : ""} aria-current={active(n, route) ? "page" : undefined} onClick={() => go(n.route, true)}>
+          <Icon name={n.icon} />
+          {t(n.short)}
+        </button>
+      ))}
     </nav>
+  );
+}
+
+function Footer() {
+  const { t, health } = useApp();
+  const g = health?.gemma;
+  return (
+    <footer className="bottom-note">
+      <span>
+        <Icon name="lock" /> {t("footPrivacy")}
+      </span>
+      <span>
+        {t("footCare")} <span className="teal">♡</span>
+      </span>
+      <span className="gemma-line">
+        <span className={`dot ${g?.available ? "" : "off"}`} />
+        {g?.available ? t("footGemma", { model: g.model }) : t("footGemmaDown")}
+      </span>
+    </footer>
   );
 }
