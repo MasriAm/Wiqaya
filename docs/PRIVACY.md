@@ -11,6 +11,7 @@ sensitive. The design goal: **the product is shared, the person never is.**
 | Who is allergic to what | yes | no | no |
 | Label photo | yes | passes through, cleaned, not stored | yes (the label only) |
 | Barcode scanned | yes | yes, not linked to anyone | no |
+| Restaurant menu (link, photo or PDF) | yes, with the result | fetches the link or passes the file through, not stored | yes (the menu only) |
 | Location | only inside the emergency text, written on the phone | no | no |
 | Scan history | yes, and the family (encrypted) | no | no |
 
@@ -35,5 +36,7 @@ sensitive. The design goal: **the product is shared, the person never is.**
 
 ## What the server can still see
 
-The barcodes and label photos scanned through it, and the size and timing of encrypted family messages. Run your
+The barcodes, label photos and restaurant menus checked through it, and the size and timing of encrypted family
+messages. It never learns who a menu was checked for. It opens menu links only on public addresses, never on your
+local network. Run your
 own server (it's one command) if that matters to you.

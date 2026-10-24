@@ -121,6 +121,13 @@ export function Home() {
               <h3>{t("quickCook")} ↗</h3>
               <p>{t("quickCookSub")}</p>
             </button>
+            <button className="quick" onClick={() => go({ name: "menu" })}>
+              <span className="icon-box">
+                <Icon name="menu" />
+              </span>
+              <h3>{t("quickMenu")} ↗</h3>
+              <p>{t("quickMenuSub")}</p>
+            </button>
             {isParent ? (
               <button className="quick" onClick={() => invite("grandparent")}>
                 <span className="icon-box">

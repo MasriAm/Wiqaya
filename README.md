@@ -31,6 +31,7 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 | **Family: parent, children, grandparents** | A parent creates the family and owns it. Each child joins on their own phone with their own QR code and chooses their allergies; the parent's phone takes the choice in (it can only add) and the parent can change anything. A child's phone checks for that child only. Grandparents join with a QR code, scan, and tap "Ask a parent" when a result isn't green; the parent approves or refuses on their own phone. Only amber can be approved: red can never be overridden. |
 | **Safe list** | Products a parent approved, tied to the exact recipe. If the ingredient list changes, the approval stops counting and a recipe change alert shows. |
 | **Emergency** | One tap calls 911. A card for paramedics (Arabic and English) shows the doctor's plan the parent saved; a text to the family says what was last eaten and where. Wiqaya never decides whether a reaction is happening. |
+| **Eating out** | Paste a link to a restaurant's menu, or add a photo or PDF of it. Gemma reads the dishes and what each is usually made with; the phone sorts them for each person: *avoid* (the menu names the allergen), *ask the staff first* (usually made with it, or the menu doesn't say), and *good to ask for*. Never "safe": a menu rarely lists every ingredient, so it ends with the cook card. |
 | **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen, with a read-aloud button. |
 | **Child mode** | A face and a voice that tell a young child, in Arabic and English, what a grown-up found on their last snack's label. |
 | **Pen expiry** | Gemma reads the expiry date off the epinephrine pen's box; the parent confirms it and gets a reminder before it runs out. |
@@ -66,6 +67,7 @@ safe**.
 | Research (tool use) | unknown ingredient names | possible allergen groups, with the sources Gemma looked at (web search, Open Food Facts) |
 | Explain | the product's findings (all of them, not the family's) | one plain sentence each, facts only |
 | Expiry | a photo of a medicine box | the printed expiry date, for the parent to confirm |
+| Menu | a restaurant menu: web page text, photos or PDF pages | each dish as printed, and what it is usually made and served with |
 
 All calls use JSON schemas, temperature 0 and no "thinking" mode. Sources Gemma cites are kept only if they
 appeared in its tool results.

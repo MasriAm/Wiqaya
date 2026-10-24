@@ -1,4 +1,5 @@
 // The app's state, and how it is saved: encrypted with a device key, in IndexedDB.
+import type { MenuFacts } from "../engine/menu.ts";
 import type { Level, Member, MemberVerdict, ProductFacts, SafeEntry } from "../engine/types.ts";
 import { newDeviceKey, openLocal, sealLocal } from "./crypto.ts";
 
@@ -97,6 +98,16 @@ export interface AppState {
   myChoice: Choice | null;
   /** On the parent's phone: children's choices still to take in. */
   choices: (Choice & { from: string })[];
+  /** Restaurant menus checked on this phone, newest first. */
+  menus: MenuRecord[];
+}
+
+export interface MenuRecord {
+  id: string;
+  at: number;
+  /** Where it came from: the link, or the file names. */
+  source: string;
+  facts: MenuFacts;
 }
 
 export const EMPTY: AppState = {
@@ -115,6 +126,7 @@ export const EMPTY: AppState = {
   seen: [],
   myChoice: null,
   choices: [],
+  menus: [],
 };
 
 function navigatorLang(): Lang {
@@ -182,7 +194,7 @@ export async function load(): Promise<AppState> {
 let saving: Promise<void> = Promise.resolve();
 export function save(state: AppState): Promise<void> {
   // keep the newest 60 scans and 40 feed items on the phone
-  const trimmed = { ...state, scans: state.scans.slice(0, 60), feed: state.feed.slice(0, 40), seen: state.seen.slice(-400) };
+  const trimmed = { ...state, scans: state.scans.slice(0, 60), feed: state.feed.slice(0, 40), seen: state.seen.slice(-400), menus: state.menus.slice(0, 8) };
   saving = saving.then(async () => put("state", await sealLocal(await deviceKey(), trimmed))).catch(() => undefined);
   return saving;
 }

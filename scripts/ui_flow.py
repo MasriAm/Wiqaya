@@ -75,6 +75,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("--label", help="a label photo for the photo path (Gemma must be running)")
+    ap.add_argument("--menu", help="a restaurant menu photo or PDF for the eating-out path (Gemma must be running)")
     ap.add_argument("--out", default="bench/out/ui")
     a = ap.parse_args()
     out = Path(a.out)
@@ -120,6 +121,21 @@ def main() -> None:
                 expect(p.get_by_role("heading", name="Allergens on this label")).to_be_visible()
             check("label photo: Gemma reads it and the phone checks it", photo_scan)
             shot(p, out, "07-result-photo")
+
+        if a.menu:
+            def menu():
+                p.get_by_role("button", name="Eating out", exact=True).click()
+                expect(p.get_by_role("heading", name="What can we order?")).to_be_visible()
+                with p.expect_file_chooser() as fc:
+                    p.get_by_role("button", name="Add a photo or PDF of the menu").click()
+                fc.value.set_files(a.menu)
+                p.get_by_role("button", name="Check the menu").click()
+                expect(p.locator(".menu-summary")).to_be_visible(timeout=900000)
+                expect(p.locator(".dish-group.avoid")).to_be_visible()
+                shot(p, out, "07b-menu")
+                p.get_by_role("button", name="Show the cook card").click()
+                expect(p.get_by_text("Please help keep our meal safe.")).to_be_visible()
+            check("eating out: a menu photo, dishes grouped per person, then the cook card", menu, p, out)
 
         def invite():
             p.goto(a.url)
@@ -208,7 +224,7 @@ def main() -> None:
         shot(p, out, "16-home-reminder")
 
         def cook_and_child():
-            p.get_by_role("button", name="Cook card").click()
+            p.locator("button.quick", has_text="Tell the cook").click()  # on a phone, from the overview
             expect(p.get_by_text("Please help keep our meal safe.")).to_be_visible()
             expect(p.get_by_text("يُرجى المساعدة في تحضير وجبة آمنة")).to_be_visible()
             shot(p, out, "17-cook-card")

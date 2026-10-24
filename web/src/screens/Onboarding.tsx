@@ -78,7 +78,7 @@ export function DeleteModal({ onClose }: { onClose: () => void }) {
       <h2>{t("deleteConfirmTitle")}</h2>
       <p>{t("deleteConfirmText")}</p>
       <button className="danger-btn wide" onClick={() => {
-        update((s) => ({ ...s, me: null, circle: null, members: [], people: [], scans: [], feed: [], safe: [], requests: [], cursor: 0, seen: [], profilesVersion: 0, familyName: "" }));
+        update((s) => ({ ...s, me: null, circle: null, members: [], people: [], scans: [], feed: [], safe: [], requests: [], cursor: 0, seen: [], profilesVersion: 0, familyName: "", menus: [], myChoice: null, choices: [] }));
         toast(t("deleted"));
         wipe().then(() => location.replace("/"));
       }}>
