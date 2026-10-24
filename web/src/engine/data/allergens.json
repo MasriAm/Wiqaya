@@ -1,0 +1,2023 @@
+{
+  "_about": "Allergen and diet terms per language. A term matches whole words; 'word*' also matches words that start with it (German and Turkish compounds and suffixes); '~term' means 'likely' (the grain or source is not stated). 'safe' phrases are removed before matching, so 'cocoa butter' never reads as milk. Sources: the EU's 14 major allergens (Regulation 1169/2011, Annex II), Open Food Facts allergen names, and local Jordanian foods. Not exhaustive: anything unknown is amber, never green.",
+  "allergens": [
+    {
+      "id": "gluten",
+      "name": {
+        "en": "Gluten (wheat, barley, rye, oats)",
+        "ar": "الغلوتين (قمح، شعير، جاودار، شوفان)"
+      },
+      "terms": {
+        "en": [
+          "gluten",
+          "wheat",
+          "wheat flour",
+          "wheat starch",
+          "barley",
+          "rye",
+          "oat",
+          "oats",
+          "oat flakes",
+          "spelt",
+          "kamut",
+          "triticale",
+          "durum",
+          "semolina",
+          "couscous",
+          "bulgur",
+          "bulghur",
+          "farro",
+          "malt",
+          "malt extract",
+          "malted barley",
+          "barley malt",
+          "malt vinegar",
+          "seitan",
+          "breadcrumbs",
+          "bread crumbs",
+          "graham",
+          "~flour",
+          "~starch",
+          "~modified starch",
+          "~cereal",
+          "~cereals",
+          "~biscuit",
+          "~wafer"
+        ],
+        "ar": [
+          "غلوتين",
+          "جلوتين",
+          "قمح",
+          "حنطة",
+          "طحين القمح",
+          "دقيق القمح",
+          "نشا القمح",
+          "شعير",
+          "شوفان",
+          "جاودار",
+          "سميد",
+          "كسكس",
+          "مالت",
+          "مولت",
+          "خلاصة الشعير",
+          "مستخلص الشعير",
+          "شعير منبت",
+          "فتات الخبز",
+          "بقسماط",
+          "~طحين",
+          "~دقيق",
+          "~نشا",
+          "~حبوب",
+          "~بسكويت",
+          "~ويفر"
+        ],
+        "it": [
+          "glutine",
+          "frumento",
+          "grano",
+          "farina di frumento",
+          "farina di grano",
+          "orzo",
+          "segale",
+          "avena",
+          "farro",
+          "spelta",
+          "kamut",
+          "semola",
+          "malto",
+          "estratto di malto",
+          "pangrattato",
+          "~farina",
+          "~amido",
+          "~cereali"
+        ],
+        "fr": [
+          "gluten",
+          "blé",
+          "froment",
+          "farine de blé",
+          "orge",
+          "seigle",
+          "avoine",
+          "épeautre",
+          "kamut",
+          "semoule",
+          "malt",
+          "extrait de malt",
+          "chapelure",
+          "~farine",
+          "~amidon",
+          "~céréales"
+        ],
+        "es": [
+          "gluten",
+          "trigo",
+          "harina de trigo",
+          "cebada",
+          "centeno",
+          "avena",
+          "espelta",
+          "kamut",
+          "sémola",
+          "malta",
+          "extracto de malta",
+          "pan rallado",
+          "~harina",
+          "~almidón",
+          "~cereales"
+        ],
+        "de": [
+          "gluten",
+          "weizen*",
+          "gerste*",
+          "gersten*",
+          "roggen*",
+          "hafer*",
+          "dinkel*",
+          "kamut",
+          "grieß",
+          "gries",
+          "malz*",
+          "paniermehl",
+          "~mehl",
+          "~stärke",
+          "~getreide"
+        ],
+        "tr": [
+          "gluten",
+          "buğday*",
+          "arpa*",
+          "çavdar*",
+          "yulaf*",
+          "kavılca",
+          "irmik",
+          "bulgur",
+          "malt*",
+          "galeta unu",
+          "~un",
+          "~nişasta",
+          "~tahıl"
+        ]
+      },
+      "safe": {
+        "en": [
+          "maltodextrin",
+          "maltose",
+          "maltitol",
+          "maltol",
+          "rice flour",
+          "corn flour",
+          "maize flour",
+          "cornflour",
+          "potato flour",
+          "chickpea flour",
+          "gram flour",
+          "soy flour",
+          "almond flour",
+          "coconut flour",
+          "tapioca flour",
+          "corn starch",
+          "cornstarch",
+          "maize starch",
+          "potato starch",
+          "tapioca starch",
+          "rice starch",
+          "pea starch",
+          "buckwheat",
+          "gluten-free",
+          "gluten free",
+          "glucose syrup",
+          "dextrose"
+        ],
+        "ar": [
+          "مالتوديكسترين",
+          "مالتوز",
+          "خالي من الغلوتين",
+          "خالي من الجلوتين",
+          "طحين الأرز",
+          "دقيق الأرز",
+          "طحين الذرة",
+          "دقيق الذرة",
+          "نشا الذرة",
+          "نشا البطاطا",
+          "نشا البطاطس",
+          "طحين الحمص",
+          "شراب الجلوكوز",
+          "دكستروز"
+        ],
+        "it": [
+          "maltodestrina",
+          "maltosio",
+          "maltitolo",
+          "farina di riso",
+          "farina di mais",
+          "amido di mais",
+          "amido di patate",
+          "amido di riso",
+          "senza glutine",
+          "sciroppo di glucosio",
+          "destrosio"
+        ],
+        "fr": [
+          "maltodextrine",
+          "maltose",
+          "maltitol",
+          "farine de riz",
+          "farine de maïs",
+          "amidon de maïs",
+          "amidon de pomme de terre",
+          "amidon de riz",
+          "sans gluten",
+          "sirop de glucose",
+          "dextrose"
+        ],
+        "es": [
+          "maltodextrina",
+          "maltosa",
+          "maltitol",
+          "harina de arroz",
+          "harina de maíz",
+          "almidón de maíz",
+          "almidón de patata",
+          "sin gluten",
+          "jarabe de glucosa",
+          "dextrosa"
+        ],
+        "de": [
+          "maltodextrin",
+          "maltose",
+          "maltit",
+          "reismehl",
+          "maismehl",
+          "maisstärke",
+          "kartoffelstärke",
+          "reisstärke",
+          "glutenfrei",
+          "glukosesirup",
+          "dextrose"
+        ],
+        "tr": [
+          "maltodekstrin",
+          "maltoz",
+          "maltitol",
+          "pirinç unu",
+          "mısır unu",
+          "mısır nişastası",
+          "patates nişastası",
+          "glutensiz",
+          "glikoz şurubu",
+          "dekstroz"
+        ]
+      }
+    },
+    {
+      "id": "milk",
+      "name": {
+        "en": "Milk",
+        "ar": "الحليب ومشتقاته"
+      },
+      "terms": {
+        "en": [
+          "milk",
+          "milk powder",
+          "skimmed milk",
+          "whole milk",
+          "milk solids",
+          "milk protein",
+          "cream",
+          "butter",
+          "butterfat",
+          "buttermilk",
+          "cheese",
+          "whey",
+          "whey powder",
+          "casein",
+          "caseinate",
+          "sodium caseinate",
+          "lactose",
+          "lactoglobulin",
+          "lactalbumin",
+          "ghee",
+          "yogurt",
+          "yoghurt",
+          "curd",
+          "kefir",
+          "milk chocolate",
+          "lactoserum"
+        ],
+        "ar": [
+          "حليب",
+          "حليب مجفف",
+          "حليب بودرة",
+          "بودرة الحليب",
+          "مسحوق الحليب",
+          "لبن",
+          "قشطة",
+          "كريمة",
+          "زبدة",
+          "زبده",
+          "جبن",
+          "جبنة",
+          "مصل اللبن",
+          "مصل الحليب",
+          "شرش اللبن",
+          "كازين",
+          "كازينات",
+          "لاكتوز",
+          "بروتين الحليب",
+          "سمنة",
+          "سمن",
+          "زبادي",
+          "روب",
+          "شوكولاتة بالحليب"
+        ],
+        "it": [
+          "latte",
+          "latte in polvere",
+          "latte scremato",
+          "panna",
+          "burro",
+          "formaggio",
+          "siero di latte",
+          "siero",
+          "caseina",
+          "caseinato",
+          "lattosio",
+          "proteine del latte",
+          "yogurt",
+          "cioccolato al latte"
+        ],
+        "fr": [
+          "lait",
+          "lait en poudre",
+          "lait écrémé",
+          "crème",
+          "beurre",
+          "fromage",
+          "lactosérum",
+          "petit-lait",
+          "caséine",
+          "caséinate",
+          "lactose",
+          "protéines de lait",
+          "yaourt",
+          "chocolat au lait"
+        ],
+        "es": [
+          "leche",
+          "leche en polvo",
+          "leche desnatada",
+          "nata",
+          "mantequilla",
+          "queso",
+          "suero de leche",
+          "lactosuero",
+          "caseína",
+          "caseinato",
+          "lactosa",
+          "proteína de leche",
+          "yogur",
+          "chocolate con leche"
+        ],
+        "de": [
+          "milch*",
+          "sahne",
+          "rahm",
+          "butter*",
+          "käse*",
+          "molke*",
+          "kasein*",
+          "laktose",
+          "lactose",
+          "joghurt",
+          "quark",
+          "vollmilch*",
+          "magermilch*"
+        ],
+        "tr": [
+          "süt*",
+          "krema",
+          "tereyağı",
+          "tereyağ",
+          "peynir*",
+          "peyniraltı suyu",
+          "kazein*",
+          "laktoz",
+          "yoğurt*",
+          "lor"
+        ]
+      },
+      "safe": {
+        "en": [
+          "cocoa butter",
+          "shea butter",
+          "peanut butter",
+          "nut butter",
+          "almond butter",
+          "coconut milk",
+          "coconut cream",
+          "almond milk",
+          "oat milk",
+          "soy milk",
+          "soya milk",
+          "rice milk",
+          "cream of tartar",
+          "dairy-free",
+          "dairy free",
+          "lactose-free milk substitute",
+          "vegetable ghee",
+          "vegetable fat",
+          "lactic acid",
+          "lactate",
+          "calcium lactate",
+          "sodium lactate",
+          "creamer, non-dairy",
+          "non-dairy"
+        ],
+        "ar": [
+          "زبدة الكاكاو",
+          "زبدة الفول السوداني",
+          "حليب جوز الهند",
+          "كريمة جوز الهند",
+          "حليب اللوز",
+          "حليب الصويا",
+          "حليب الشوفان",
+          "سمن نباتي",
+          "سمنة نباتية",
+          "دهون نباتية",
+          "حمض اللاكتيك",
+          "خالي من الحليب",
+          "خالي من اللاكتوز"
+        ],
+        "it": [
+          "burro di cacao",
+          "burro di arachidi",
+          "latte di cocco",
+          "latte di mandorla",
+          "latte di soia",
+          "acido lattico",
+          "senza lattosio"
+        ],
+        "fr": [
+          "beurre de cacao",
+          "beurre de cacahuète",
+          "lait de coco",
+          "lait d'amande",
+          "lait de soja",
+          "acide lactique",
+          "sans lactose"
+        ],
+        "es": [
+          "manteca de cacao",
+          "mantequilla de cacahuete",
+          "leche de coco",
+          "leche de almendras",
+          "leche de soja",
+          "ácido láctico",
+          "sin lactosa"
+        ],
+        "de": [
+          "kakaobutter",
+          "erdnussbutter",
+          "kokosmilch",
+          "mandelmilch",
+          "sojamilch",
+          "milchsäure",
+          "laktosefrei"
+        ],
+        "tr": [
+          "kakao yağı",
+          "fıstık ezmesi",
+          "hindistan cevizi sütü",
+          "badem sütü",
+          "soya sütü",
+          "laktik asit",
+          "laktozsuz"
+        ]
+      }
+    },
+    {
+      "id": "eggs",
+      "name": {
+        "en": "Eggs",
+        "ar": "البيض"
+      },
+      "terms": {
+        "en": [
+          "egg",
+          "eggs",
+          "egg white",
+          "egg yolk",
+          "egg powder",
+          "whole egg",
+          "albumen",
+          "ovalbumin",
+          "lysozyme",
+          "mayonnaise",
+          "meringue",
+          "e1105"
+        ],
+        "ar": [
+          "بيض",
+          "بيضة",
+          "بياض البيض",
+          "صفار البيض",
+          "مسحوق البيض",
+          "بيض مجفف",
+          "ألبومين",
+          "مايونيز",
+          "مايونيزي"
+        ],
+        "it": [
+          "uova",
+          "uovo",
+          "albume",
+          "tuorlo",
+          "uova in polvere",
+          "maionese"
+        ],
+        "fr": [
+          "œuf",
+          "œufs",
+          "oeuf",
+          "oeufs",
+          "blanc d'œuf",
+          "jaune d'œuf",
+          "œuf entier",
+          "mayonnaise"
+        ],
+        "es": [
+          "huevo",
+          "huevos",
+          "clara de huevo",
+          "yema de huevo",
+          "huevo en polvo",
+          "mayonesa"
+        ],
+        "de": [
+          "ei",
+          "eier",
+          "eigelb",
+          "eiklar",
+          "vollei*",
+          "hühnerei*",
+          "mayonnaise"
+        ],
+        "tr": [
+          "yumurta*",
+          "mayonez"
+        ]
+      },
+      "safe": {
+        "en": [
+          "eggplant",
+          "egg-free",
+          "egg free"
+        ],
+        "ar": [
+          "خالي من البيض"
+        ],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "peanuts",
+      "name": {
+        "en": "Peanuts",
+        "ar": "الفول السوداني"
+      },
+      "terms": {
+        "en": [
+          "peanut",
+          "peanuts",
+          "groundnut",
+          "groundnuts",
+          "arachis",
+          "peanut butter",
+          "peanut oil",
+          "peanut flour"
+        ],
+        "ar": [
+          "فول سوداني",
+          "الفول السوداني",
+          "زبدة الفول السوداني",
+          "زيت الفول السوداني"
+        ],
+        "it": [
+          "arachidi",
+          "arachide",
+          "burro di arachidi"
+        ],
+        "fr": [
+          "arachide",
+          "arachides",
+          "cacahuète",
+          "cacahuètes",
+          "cacahouète"
+        ],
+        "es": [
+          "cacahuete",
+          "cacahuetes",
+          "maní",
+          "cacahuate"
+        ],
+        "de": [
+          "erdnuss*",
+          "erdnüsse"
+        ],
+        "tr": [
+          "yer fıstığı",
+          "yerfıstığı",
+          "fıstık ezmesi"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "tree_nuts",
+      "name": {
+        "en": "Tree nuts",
+        "ar": "المكسرات"
+      },
+      "terms": {
+        "en": [
+          "nut",
+          "nuts",
+          "tree nuts",
+          "almond",
+          "almonds",
+          "hazelnut",
+          "hazelnuts",
+          "walnut",
+          "walnuts",
+          "cashew",
+          "cashews",
+          "pecan",
+          "pecans",
+          "brazil nut",
+          "brazil nuts",
+          "pistachio",
+          "pistachios",
+          "macadamia",
+          "queensland nut",
+          "praline",
+          "marzipan",
+          "nougat",
+          "gianduja"
+        ],
+        "ar": [
+          "مكسرات",
+          "لوز",
+          "بندق",
+          "جوز",
+          "عين الجمل",
+          "كاجو",
+          "فستق حلبي",
+          "فستق",
+          "جوز البرازيل",
+          "مكاديميا",
+          "بيكان",
+          "مرزبان",
+          "نوجا",
+          "برالين"
+        ],
+        "it": [
+          "frutta a guscio",
+          "frutta secca a guscio",
+          "mandorle",
+          "mandorla",
+          "nocciole",
+          "nocciola",
+          "noci",
+          "noce",
+          "anacardi",
+          "pistacchi",
+          "pistacchio",
+          "noci pecan",
+          "noci del brasile",
+          "noci di macadamia",
+          "marzapane",
+          "torrone"
+        ],
+        "fr": [
+          "fruits à coque",
+          "amande",
+          "amandes",
+          "noisette",
+          "noisettes",
+          "noix",
+          "noix de cajou",
+          "pistache",
+          "pistaches",
+          "noix de pécan",
+          "noix du brésil",
+          "noix de macadamia",
+          "massepain",
+          "praliné",
+          "nougat"
+        ],
+        "es": [
+          "frutos de cáscara",
+          "frutos secos",
+          "almendra",
+          "almendras",
+          "avellana",
+          "avellanas",
+          "nuez",
+          "nueces",
+          "anacardo",
+          "anacardos",
+          "pistacho",
+          "pistachos",
+          "nuez de brasil",
+          "macadamia",
+          "mazapán",
+          "turrón"
+        ],
+        "de": [
+          "schalenfrüchte",
+          "nüsse",
+          "nuss",
+          "mandel*",
+          "haselnuss*",
+          "haselnüsse",
+          "walnuss*",
+          "walnüsse",
+          "cashew*",
+          "pekannuss*",
+          "paranuss*",
+          "pistazie*",
+          "macadamia*",
+          "marzipan",
+          "nougat",
+          "krokant"
+        ],
+        "tr": [
+          "sert kabuklu meyve*",
+          "kuruyemiş",
+          "badem*",
+          "fındık*",
+          "ceviz*",
+          "kaju",
+          "antep fıstığı",
+          "fıstık",
+          "pekan cevizi",
+          "brezilya cevizi",
+          "makadamya"
+        ]
+      },
+      "safe": {
+        "en": [
+          "nutmeg",
+          "coconut",
+          "butternut",
+          "doughnut",
+          "donut",
+          "chestnut",
+          "water chestnut",
+          "nut-free",
+          "nut free",
+          "peanut",
+          "peanuts",
+          "pine nut",
+          "pine nuts",
+          "shea nut"
+        ],
+        "ar": [
+          "جوزة الطيب",
+          "جوز الهند",
+          "خالي من المكسرات",
+          "فستق عبيد",
+          "صنوبر"
+        ],
+        "it": [
+          "noce moscata",
+          "noce di cocco",
+          "cocco",
+          "castagne",
+          "pinoli"
+        ],
+        "fr": [
+          "noix de coco",
+          "noix de muscade",
+          "muscade",
+          "châtaigne",
+          "marron",
+          "pignons"
+        ],
+        "es": [
+          "nuez moscada",
+          "coco",
+          "castaña",
+          "piñones"
+        ],
+        "de": [
+          "muskatnuss",
+          "kokosnuss",
+          "kokos",
+          "erdnuss",
+          "erdnüsse",
+          "pinienkerne",
+          "esskastanie"
+        ],
+        "tr": [
+          "muskat",
+          "hindistan cevizi",
+          "yer fıstığı",
+          "yerfıstığı",
+          "çam fıstığı",
+          "kestane"
+        ]
+      }
+    },
+    {
+      "id": "pine_nuts",
+      "name": {
+        "en": "Pine nuts",
+        "ar": "الصنوبر"
+      },
+      "terms": {
+        "en": [
+          "pine nut",
+          "pine nuts",
+          "pine kernel",
+          "pine kernels",
+          "pignoli"
+        ],
+        "ar": [
+          "صنوبر"
+        ],
+        "it": [
+          "pinoli",
+          "pinolo"
+        ],
+        "fr": [
+          "pignon",
+          "pignons",
+          "pignons de pin"
+        ],
+        "es": [
+          "piñón",
+          "piñones"
+        ],
+        "de": [
+          "pinienkern*"
+        ],
+        "tr": [
+          "çam fıstığı"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "sesame",
+      "name": {
+        "en": "Sesame",
+        "ar": "السمسم"
+      },
+      "terms": {
+        "en": [
+          "sesame",
+          "sesame seeds",
+          "sesame oil",
+          "sesame paste",
+          "tahini",
+          "tahina",
+          "tahineh",
+          "halva",
+          "halvah",
+          "gomasio"
+        ],
+        "ar": [
+          "سمسم",
+          "بذور السمسم",
+          "زيت السمسم",
+          "طحينة",
+          "طحينية"
+        ],
+        "it": [
+          "sesamo",
+          "semi di sesamo",
+          "olio di sesamo",
+          "tahina"
+        ],
+        "fr": [
+          "sésame",
+          "graines de sésame",
+          "huile de sésame",
+          "tahini",
+          "tahin"
+        ],
+        "es": [
+          "sésamo",
+          "ajonjolí",
+          "semillas de sésamo",
+          "aceite de sésamo",
+          "tahini"
+        ],
+        "de": [
+          "sesam*",
+          "tahin*"
+        ],
+        "tr": [
+          "susam*",
+          "tahin*",
+          "helva*"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "soy",
+      "name": {
+        "en": "Soy",
+        "ar": "الصويا"
+      },
+      "terms": {
+        "en": [
+          "soy",
+          "soya",
+          "soybean",
+          "soybeans",
+          "soya beans",
+          "soy protein",
+          "soy lecithin",
+          "soya lecithin",
+          "soy sauce",
+          "soy flour",
+          "tofu",
+          "edamame",
+          "miso",
+          "tempeh",
+          "~lecithin",
+          "~e322",
+          "~lecithins"
+        ],
+        "ar": [
+          "صويا",
+          "فول الصويا",
+          "بروتين الصويا",
+          "ليسيثين الصويا",
+          "ليسيتين الصويا",
+          "صلصة الصويا",
+          "~ليسيثين",
+          "~ليسيتين"
+        ],
+        "it": [
+          "soia",
+          "lecitina di soia",
+          "salsa di soia",
+          "~lecitina",
+          "~lecitine"
+        ],
+        "fr": [
+          "soja",
+          "lécithine de soja",
+          "sauce soja",
+          "~lécithine",
+          "~lécithines"
+        ],
+        "es": [
+          "soja",
+          "soya",
+          "lecitina de soja",
+          "salsa de soja",
+          "~lecitina",
+          "~lecitinas"
+        ],
+        "de": [
+          "soja*",
+          "~lecithin",
+          "~lecithine"
+        ],
+        "tr": [
+          "soya*",
+          "~lesitin"
+        ]
+      },
+      "safe": {
+        "en": [
+          "sunflower lecithin",
+          "rapeseed lecithin",
+          "lecithin (sunflower)",
+          "soy-free",
+          "soy free"
+        ],
+        "ar": [
+          "ليسيثين دوار الشمس",
+          "ليسيتين دوار الشمس",
+          "ليسيثين عباد الشمس"
+        ],
+        "it": [
+          "lecitina di girasole"
+        ],
+        "fr": [
+          "lécithine de tournesol",
+          "lécithine de colza"
+        ],
+        "es": [
+          "lecitina de girasol"
+        ],
+        "de": [
+          "sonnenblumenlecithin",
+          "rapslecithin"
+        ],
+        "tr": [
+          "ayçiçek lesitini"
+        ]
+      }
+    },
+    {
+      "id": "fish",
+      "name": {
+        "en": "Fish",
+        "ar": "السمك"
+      },
+      "terms": {
+        "en": [
+          "fish",
+          "fish sauce",
+          "fish oil",
+          "fish gelatin",
+          "anchovy",
+          "anchovies",
+          "tuna",
+          "salmon",
+          "cod",
+          "sardine",
+          "sardines",
+          "mackerel",
+          "surimi",
+          "~omega-3"
+        ],
+        "ar": [
+          "سمك",
+          "أسماك",
+          "اسماك",
+          "زيت السمك",
+          "صلصة السمك",
+          "تونة",
+          "تونا",
+          "سردين",
+          "أنشوجة",
+          "انشوجة",
+          "سلمون",
+          "ماكريل",
+          "بكالاه"
+        ],
+        "it": [
+          "pesce",
+          "acciughe",
+          "acciuga",
+          "tonno",
+          "salmone",
+          "merluzzo",
+          "sardine"
+        ],
+        "fr": [
+          "poisson",
+          "anchois",
+          "thon",
+          "saumon",
+          "cabillaud",
+          "morue",
+          "sardine",
+          "sardines"
+        ],
+        "es": [
+          "pescado",
+          "anchoa",
+          "anchoas",
+          "atún",
+          "salmón",
+          "bacalao",
+          "sardina",
+          "sardinas"
+        ],
+        "de": [
+          "fisch*",
+          "sardelle*",
+          "thunfisch*",
+          "lachs*",
+          "kabeljau",
+          "sardine*"
+        ],
+        "tr": [
+          "balık*",
+          "hamsi",
+          "ton balığı",
+          "somon",
+          "morina",
+          "sardalya"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "crustaceans",
+      "name": {
+        "en": "Crustaceans",
+        "ar": "القشريات"
+      },
+      "terms": {
+        "en": [
+          "crustacean",
+          "crustaceans",
+          "shrimp",
+          "shrimps",
+          "prawn",
+          "prawns",
+          "crab",
+          "lobster",
+          "crayfish",
+          "langoustine",
+          "krill"
+        ],
+        "ar": [
+          "قشريات",
+          "روبيان",
+          "جمبري",
+          "قريدس",
+          "سلطعون",
+          "كابوريا",
+          "كركند",
+          "استاكوزا",
+          "جراد البحر"
+        ],
+        "it": [
+          "crostacei",
+          "gamberi",
+          "gamberetti",
+          "granchio",
+          "aragosta",
+          "astice",
+          "scampi"
+        ],
+        "fr": [
+          "crustacés",
+          "crevette",
+          "crevettes",
+          "crabe",
+          "homard",
+          "langouste",
+          "langoustine"
+        ],
+        "es": [
+          "crustáceos",
+          "gamba",
+          "gambas",
+          "camarón",
+          "camarones",
+          "langostino",
+          "cangrejo",
+          "langosta"
+        ],
+        "de": [
+          "krebstier*",
+          "garnele*",
+          "krabbe*",
+          "hummer",
+          "languste",
+          "shrimps"
+        ],
+        "tr": [
+          "kabuklu deniz*",
+          "karides",
+          "yengeç",
+          "ıstakoz"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "molluscs",
+      "name": {
+        "en": "Molluscs",
+        "ar": "الرخويات"
+      },
+      "terms": {
+        "en": [
+          "mollusc",
+          "molluscs",
+          "mollusk",
+          "mollusks",
+          "squid",
+          "calamari",
+          "octopus",
+          "cuttlefish",
+          "mussel",
+          "mussels",
+          "oyster",
+          "oysters",
+          "clam",
+          "clams",
+          "scallop",
+          "scallops",
+          "snail",
+          "snails",
+          "oyster sauce"
+        ],
+        "ar": [
+          "رخويات",
+          "حبار",
+          "كاليماري",
+          "أخطبوط",
+          "اخطبوط",
+          "سبيدج",
+          "بلح البحر",
+          "محار",
+          "قواقع",
+          "حلزون",
+          "صلصة المحار"
+        ],
+        "it": [
+          "molluschi",
+          "calamari",
+          "calamaro",
+          "polpo",
+          "seppia",
+          "cozze",
+          "ostriche",
+          "vongole",
+          "capesante",
+          "lumache"
+        ],
+        "fr": [
+          "mollusques",
+          "calmar",
+          "calamar",
+          "poulpe",
+          "seiche",
+          "moules",
+          "huîtres",
+          "palourdes",
+          "coquilles saint-jacques",
+          "escargots"
+        ],
+        "es": [
+          "moluscos",
+          "calamar",
+          "pulpo",
+          "sepia",
+          "mejillón",
+          "mejillones",
+          "ostra",
+          "ostras",
+          "almeja",
+          "almejas",
+          "vieira",
+          "caracoles"
+        ],
+        "de": [
+          "weichtier*",
+          "tintenfisch*",
+          "kalmar*",
+          "krake",
+          "muschel*",
+          "auster*",
+          "jakobsmuschel*",
+          "schnecke*"
+        ],
+        "tr": [
+          "yumuşakça*",
+          "kalamar",
+          "ahtapot",
+          "mürekkep balığı",
+          "midye",
+          "istiridye"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "celery",
+      "name": {
+        "en": "Celery",
+        "ar": "الكرفس"
+      },
+      "terms": {
+        "en": [
+          "celery",
+          "celeriac",
+          "celery seed",
+          "celery salt",
+          "celery powder"
+        ],
+        "ar": [
+          "كرفس",
+          "بذور الكرفس",
+          "ملح الكرفس"
+        ],
+        "it": [
+          "sedano",
+          "sedano rapa"
+        ],
+        "fr": [
+          "céleri",
+          "céleri-rave"
+        ],
+        "es": [
+          "apio"
+        ],
+        "de": [
+          "sellerie*"
+        ],
+        "tr": [
+          "kereviz*"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "mustard",
+      "name": {
+        "en": "Mustard",
+        "ar": "الخردل"
+      },
+      "terms": {
+        "en": [
+          "mustard",
+          "mustard seed",
+          "mustard seeds",
+          "mustard flour"
+        ],
+        "ar": [
+          "خردل",
+          "مستردة",
+          "مسطردة",
+          "بذور الخردل"
+        ],
+        "it": [
+          "senape"
+        ],
+        "fr": [
+          "moutarde"
+        ],
+        "es": [
+          "mostaza"
+        ],
+        "de": [
+          "senf*"
+        ],
+        "tr": [
+          "hardal*"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "sulphites",
+      "name": {
+        "en": "Sulphites",
+        "ar": "الكبريتيت"
+      },
+      "terms": {
+        "en": [
+          "sulphite",
+          "sulphites",
+          "sulfite",
+          "sulfites",
+          "sulphur dioxide",
+          "sulfur dioxide",
+          "metabisulphite",
+          "metabisulfite",
+          "bisulphite",
+          "bisulfite",
+          "sodium metabisulphite",
+          "potassium metabisulphite",
+          "e220",
+          "e221",
+          "e222",
+          "e223",
+          "e224",
+          "e225",
+          "e226",
+          "e227",
+          "e228"
+        ],
+        "ar": [
+          "كبريتيت",
+          "كبريتيتات",
+          "ثاني أكسيد الكبريت",
+          "ميتابيسلفيت",
+          "ميتا بيسلفيت"
+        ],
+        "it": [
+          "solfiti",
+          "anidride solforosa",
+          "metabisolfito"
+        ],
+        "fr": [
+          "sulfites",
+          "anhydride sulfureux",
+          "dioxyde de soufre",
+          "métabisulfite"
+        ],
+        "es": [
+          "sulfitos",
+          "dióxido de azufre",
+          "anhídrido sulfuroso",
+          "metabisulfito"
+        ],
+        "de": [
+          "sulfit*",
+          "schwefeldioxid",
+          "disulfit*"
+        ],
+        "tr": [
+          "sülfit*",
+          "kükürt dioksit"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    },
+    {
+      "id": "lupin",
+      "name": {
+        "en": "Lupin",
+        "ar": "الترمس"
+      },
+      "terms": {
+        "en": [
+          "lupin",
+          "lupine",
+          "lupin flour",
+          "lupin seeds"
+        ],
+        "ar": [
+          "طحين الترمس"
+        ],
+        "it": [
+          "lupino",
+          "lupini",
+          "farina di lupino"
+        ],
+        "fr": [
+          "lupin",
+          "farine de lupin"
+        ],
+        "es": [
+          "altramuz",
+          "altramuces",
+          "lupino"
+        ],
+        "de": [
+          "lupine*",
+          "lupinen*"
+        ],
+        "tr": [
+          "acı bakla",
+          "lüpen"
+        ]
+      },
+      "safe": {
+        "en": [],
+        "ar": [],
+        "it": [],
+        "fr": [],
+        "es": [],
+        "de": [],
+        "tr": []
+      }
+    }
+  ],
+  "diets": [
+    {
+      "id": "halal",
+      "name": {
+        "en": "Halal",
+        "ar": "حلال"
+      },
+      "terms": {
+        "en": [
+          "pork",
+          "pig",
+          "swine",
+          "bacon",
+          "ham",
+          "lard",
+          "pork fat",
+          "pork gelatin",
+          "pork gelatine",
+          "alcohol",
+          "ethanol",
+          "ethyl alcohol",
+          "wine",
+          "rum",
+          "beer",
+          "brandy",
+          "liqueur",
+          "whisky",
+          "vodka",
+          "cognac",
+          "~gelatin",
+          "~gelatine",
+          "~e441",
+          "~e120",
+          "~carmine",
+          "~cochineal",
+          "~e471",
+          "~e472",
+          "~mono- and diglycerides",
+          "~mono and diglycerides of fatty acids",
+          "~rennet",
+          "~animal fat",
+          "~l-cysteine",
+          "~e920",
+          "~e904",
+          "~shellac",
+          "~wine vinegar",
+          "~glycerol",
+          "~glycerin",
+          "~e422",
+          "~e570",
+          "~stearic acid"
+        ],
+        "ar": [
+          "خنزير",
+          "لحم خنزير",
+          "دهن الخنزير",
+          "شحم الخنزير",
+          "جيلاتين الخنزير",
+          "كحول",
+          "إيثانول",
+          "ايثانول",
+          "نبيذ",
+          "خمر",
+          "بيرة",
+          "روم",
+          "~جيلاتين",
+          "~جيلاتينة",
+          "~كارمين",
+          "~دهون حيوانية",
+          "~منفحة",
+          "~إنفحة",
+          "~خل النبيذ"
+        ],
+        "it": [
+          "maiale",
+          "suino",
+          "strutto",
+          "pancetta",
+          "prosciutto",
+          "alcol",
+          "alcool",
+          "vino",
+          "rum",
+          "birra",
+          "liquore",
+          "~gelatina",
+          "~carminio",
+          "~cocciniglia",
+          "~caglio",
+          "~aceto di vino"
+        ],
+        "fr": [
+          "porc",
+          "lard",
+          "saindoux",
+          "jambon",
+          "alcool",
+          "vin",
+          "rhum",
+          "bière",
+          "liqueur",
+          "~gélatine",
+          "~carmin",
+          "~cochenille",
+          "~présure",
+          "~vinaigre de vin"
+        ],
+        "es": [
+          "cerdo",
+          "manteca de cerdo",
+          "tocino",
+          "jamón",
+          "alcohol",
+          "vino",
+          "ron",
+          "cerveza",
+          "licor",
+          "~gelatina",
+          "~carmín",
+          "~cochinilla",
+          "~cuajo",
+          "~vinagre de vino"
+        ],
+        "de": [
+          "schwein*",
+          "schmalz",
+          "speck",
+          "schinken",
+          "alkohol",
+          "ethanol",
+          "wein",
+          "rum",
+          "bier",
+          "likör",
+          "~gelatine",
+          "~karmin",
+          "~cochenille",
+          "~lab",
+          "~weinessig"
+        ],
+        "tr": [
+          "domuz*",
+          "alkol*",
+          "şarap",
+          "rom",
+          "bira",
+          "likör",
+          "~jelatin",
+          "~karmin",
+          "~peynir mayası",
+          "~şarap sirkesi"
+        ]
+      },
+      "safe": {
+        "en": [
+          "halal gelatin",
+          "halal gelatine",
+          "beef gelatin",
+          "beef gelatine",
+          "bovine gelatin",
+          "bovine gelatine",
+          "fish gelatin",
+          "fish gelatine",
+          "alcohol-free",
+          "alcohol free",
+          "non-alcoholic",
+          "microbial rennet",
+          "vegetable rennet",
+          "e471 (vegetable)",
+          "vegetable mono- and diglycerides",
+          "mono- and diglycerides of fatty acids (vegetable)",
+          "sugar alcohol",
+          "sugar alcohols",
+          "pork-free"
+        ],
+        "ar": [
+          "جيلاتين حلال",
+          "جيلاتين بقري",
+          "جيلاتين سمك",
+          "خالي من الكحول",
+          "منفحة نباتية",
+          "منفحة ميكروبية",
+          "مصدر نباتي"
+        ],
+        "it": [
+          "gelatina bovina",
+          "gelatina di pesce",
+          "senza alcol",
+          "caglio microbico",
+          "caglio vegetale"
+        ],
+        "fr": [
+          "gélatine bovine",
+          "gélatine de poisson",
+          "sans alcool",
+          "présure microbienne",
+          "présure végétale"
+        ],
+        "es": [
+          "gelatina bovina",
+          "gelatina de pescado",
+          "sin alcohol",
+          "cuajo microbiano",
+          "cuajo vegetal"
+        ],
+        "de": [
+          "rindergelatine",
+          "fischgelatine",
+          "alkoholfrei",
+          "mikrobielles lab"
+        ],
+        "tr": [
+          "sığır jelatini",
+          "balık jelatini",
+          "alkolsüz",
+          "mikrobiyal maya"
+        ]
+      }
+    },
+    {
+      "id": "vegetarian",
+      "name": {
+        "en": "Vegetarian",
+        "ar": "نباتي"
+      },
+      "terms": {
+        "en": [
+          "meat",
+          "beef",
+          "chicken",
+          "pork",
+          "lamb",
+          "mutton",
+          "veal",
+          "turkey",
+          "bacon",
+          "ham",
+          "lard",
+          "tallow",
+          "gelatin",
+          "gelatine",
+          "e441",
+          "fish",
+          "anchovy",
+          "anchovies",
+          "tuna",
+          "shrimp",
+          "prawn",
+          "carmine",
+          "cochineal",
+          "e120",
+          "shellac",
+          "e904",
+          "animal fat",
+          "animal rennet",
+          "fish oil",
+          "~rennet",
+          "~e471",
+          "~e472",
+          "~mono- and diglycerides",
+          "~l-cysteine",
+          "~e920",
+          "~natural flavouring",
+          "~natural flavoring",
+          "~e631",
+          "~e627",
+          "~e635",
+          "~e422",
+          "~glycerol",
+          "~glycerin",
+          "~e570",
+          "~stearic acid"
+        ],
+        "ar": [
+          "لحم",
+          "لحوم",
+          "لحم بقر",
+          "دجاج",
+          "لحم خنزير",
+          "خنزير",
+          "لحم غنم",
+          "ضأن",
+          "ديك رومي",
+          "شحم",
+          "دهون حيوانية",
+          "جيلاتين",
+          "سمك",
+          "تونة",
+          "روبيان",
+          "كارمين",
+          "~منفحة",
+          "~إنفحة",
+          "~منكهات طبيعية",
+          "~نكهات طبيعية"
+        ],
+        "it": [
+          "carne",
+          "manzo",
+          "pollo",
+          "maiale",
+          "agnello",
+          "vitello",
+          "tacchino",
+          "strutto",
+          "gelatina",
+          "pesce",
+          "acciughe",
+          "tonno",
+          "carminio",
+          "cocciniglia",
+          "gommalacca",
+          "~caglio"
+        ],
+        "fr": [
+          "viande",
+          "bœuf",
+          "boeuf",
+          "poulet",
+          "porc",
+          "agneau",
+          "veau",
+          "dinde",
+          "saindoux",
+          "suif",
+          "gélatine",
+          "poisson",
+          "anchois",
+          "thon",
+          "carmin",
+          "cochenille",
+          "gomme laque",
+          "~présure"
+        ],
+        "es": [
+          "carne",
+          "ternera",
+          "pollo",
+          "cerdo",
+          "cordero",
+          "pavo",
+          "manteca de cerdo",
+          "gelatina",
+          "pescado",
+          "anchoa",
+          "atún",
+          "carmín",
+          "cochinilla",
+          "goma laca",
+          "~cuajo"
+        ],
+        "de": [
+          "fleisch*",
+          "rind*",
+          "hähnchen*",
+          "huhn",
+          "schwein*",
+          "lamm*",
+          "kalb*",
+          "pute*",
+          "schmalz",
+          "talg",
+          "gelatine",
+          "fisch*",
+          "sardelle*",
+          "thunfisch*",
+          "karmin",
+          "cochenille",
+          "schellack",
+          "~lab"
+        ],
+        "tr": [
+          "et",
+          "sığır eti",
+          "tavuk*",
+          "domuz*",
+          "kuzu eti",
+          "dana eti",
+          "hindi eti",
+          "jelatin",
+          "balık*",
+          "hamsi",
+          "ton balığı",
+          "karmin",
+          "şellak",
+          "~peynir mayası"
+        ]
+      },
+      "safe": {
+        "en": [
+          "meat-free",
+          "meat free",
+          "plant-based",
+          "vegetarian",
+          "microbial rennet",
+          "vegetable rennet",
+          "agar",
+          "pectin",
+          "chicken-free",
+          "coconut meat",
+          "e471 (vegetable)",
+          "vegetable mono- and diglycerides"
+        ],
+        "ar": [
+          "خالي من اللحوم",
+          "نباتي",
+          "منفحة نباتية",
+          "منفحة ميكروبية",
+          "آجار",
+          "بكتين",
+          "مصدر نباتي"
+        ],
+        "it": [
+          "vegetariano",
+          "caglio microbico",
+          "caglio vegetale",
+          "agar",
+          "pectina"
+        ],
+        "fr": [
+          "végétarien",
+          "présure microbienne",
+          "présure végétale",
+          "agar",
+          "pectine"
+        ],
+        "es": [
+          "vegetariano",
+          "cuajo microbiano",
+          "cuajo vegetal",
+          "agar",
+          "pectina"
+        ],
+        "de": [
+          "vegetarisch",
+          "mikrobielles lab",
+          "agar",
+          "pektin"
+        ],
+        "tr": [
+          "vejetaryen",
+          "mikrobiyal maya",
+          "agar",
+          "pektin"
+        ]
+      }
+    }
+  ],
+  "off_tags": {
+    "en:gluten": "gluten",
+    "en:milk": "milk",
+    "en:eggs": "eggs",
+    "en:peanuts": "peanuts",
+    "en:nuts": "tree_nuts",
+    "en:sesame-seeds": "sesame",
+    "en:soybeans": "soy",
+    "en:fish": "fish",
+    "en:crustaceans": "crustaceans",
+    "en:molluscs": "molluscs",
+    "en:celery": "celery",
+    "en:mustard": "mustard",
+    "en:sulphur-dioxide-and-sulphites": "sulphites",
+    "en:lupin": "lupin"
+  }
+}

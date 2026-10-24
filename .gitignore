@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Web (the built app is committed in wiqaya/web_dist so the server runs without Node)
+web/node_modules/
+web/dist/
+
+# Local state: product cache, relay database, certificates, benchmark output
+.wiqaya/
+bench/out/
+*.local.*
+.env
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
