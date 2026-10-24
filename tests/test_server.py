@@ -16,8 +16,9 @@ from wiqaya.text import split_ingredients
 class FakeGemma:
     """Answers like Gemma would, and records every request so tests can check what Gemma was sent."""
 
-    def __init__(self, readings=None, pairs=None, findings=None, tool_calls=None):
+    def __init__(self, readings=None, pairs=None, findings=None, tool_calls=None, lines=None):
         self.readings = list(readings or [])
+        self.lines = lines or []
         self.pairs = pairs or []
         self.findings = findings or []
         self.tool_calls = tool_calls or []
@@ -32,6 +33,8 @@ class FakeGemma:
         props = schema["properties"]
         if "labels" in props:
             return self.readings.pop(0), {}
+        if "lines" in props:
+            return {"lines": self.lines}, {}
         if "pairs" in props:
             return {"pairs": self.pairs}, {}
         if "findings" in props:
@@ -135,6 +138,20 @@ def test_arrange_original_and_sticker():
     o, s, name, _ = labels.arrange([(r1, "")])
     assert o["language"] == "it" and s["language"] == "ar" and name == "B"
     assert "_role" not in o
+
+
+def test_edge_check_only_lowers_complete():
+    # the photo cuts "Gerstenmalzextrakt"; Gemma's reading finishes the word and calls the list complete
+    items = ["Weizenmehl", "Gerstenmalzextrakt", "Natron"]
+    g = FakeGemma(readings=[reading("only", "de", items)], lines=["Zutaten: Weizenmehl, Gerstenmalzextra", "Natron."])
+    assert labels.read(g, "img")[0]["labels"][0]["complete"] is False
+    # a line that wraps after a whole word is fine
+    g = FakeGemma(readings=[reading("only", "de", items)], lines=["Zutaten: Weizenmehl, Gerstenmalzextrakt,", "Natron."])
+    assert labels.read(g, "img")[0]["labels"][0]["complete"] is True
+    # already incomplete: no second look, and nothing can make it complete
+    g = FakeGemma(readings=[reading("only", "de", items, complete=False)])
+    assert labels.read(g, "img")[0]["labels"][0]["complete"] is False
+    assert len(g.sent) == 1
 
 
 def test_pair_checks_indices():

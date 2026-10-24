@@ -12,6 +12,7 @@ Never a name, an allergy profile or a location.
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 from wiqaya import off
@@ -106,14 +107,51 @@ def _label(raw: dict) -> dict:
             "_role": raw.get("role") or "only"}
 
 
+LINES_SYSTEM = """You copy text from photos of food packaging. Copy the ingredient list line by line, exactly as each
+line is printed in the photo, including a word that is only partly visible. Do not complete or correct anything."""
+
+LINES_SCHEMA = {
+    "type": "object",
+    "properties": {"lines": {"type": "array", "items": {"type": "string"}}},
+    "required": ["lines"],
+}
+
+
+def _words(text: str | None) -> list[str]:
+    plain = "".join(c for c in unicodedata.normalize("NFKD", (text or "").casefold()) if not unicodedata.combining(c))
+    return re.findall(r"\w+", plain)
+
+
+def cut_off(gemma: Gemma, image_b64: str, labels: list[dict]) -> bool:
+    """A second look, for lists Gemma called complete. Asked whether a list is cut off, Gemma often says no; reading
+    it, Gemma quietly finishes a word the photo's edge cut ("Gerstenmalzextra" becomes "Gerstenmalzextrakt"). So Gemma
+    copies the printed lines as they are, and code checks them: a line that ends in the start of a word Gemma read
+    whole ran into the edge of the photo."""
+    answer, _ = gemma.json(LINES_SYSTEM, "The photo:", LINES_SCHEMA, images=[image_b64], num_predict=512)
+    read: set[str] = set()
+    for lab in labels:
+        for text in [i["text"] for i in lab["ingredients"]] + [lab["contains"], lab["may_contain"]]:
+            read.update(_words(text))
+    for line in (answer.get("lines") or [])[:-1]:  # the last line ends the list; a wrapped line's end is the edge
+        words = _words(str(line))
+        last = words[-1] if words else ""
+        if len(last) >= 3 and last not in read and any(w.startswith(last) for w in read):
+            return True
+    return False
+
+
 def read(gemma: Gemma, image_b64: str, hint: str = "") -> tuple[dict, dict]:
     """One photo → ``{"product_name", "brand", "labels": [...]}`` and Gemma's stats."""
     user = ("Read every ingredient list on this package. " + HINTS.get(hint, "")).strip()
     answer, stats = gemma.json(READ_SYSTEM, user, READ_SCHEMA, images=[image_b64], num_predict=3072)
     labels = [_label(lab) for lab in answer.get("labels") or []]
+    labels = [lab for lab in labels if lab["ingredients"] or lab["contains"] or lab["may_contain"]]
+    # the edge check can only lower "complete", never raise it
+    if any(lab["complete"] for lab in labels) and cut_off(gemma, image_b64, labels):
+        for lab in labels:
+            lab["complete"] = False
     return {"product_name": (answer.get("product_name") or "").strip() or None,
-            "brand": (answer.get("brand") or "").strip() or None,
-            "labels": [lab for lab in labels if lab["ingredients"] or lab["contains"] or lab["may_contain"]]}, stats
+            "brand": (answer.get("brand") or "").strip() or None, "labels": labels}, stats
 
 
 def arrange(readings: list[tuple[dict, str]]) -> tuple[dict | None, dict | None, str | None, str | None]:

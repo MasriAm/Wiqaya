@@ -556,7 +556,7 @@
         ],
         "de": [
           "ei",
-          "eier",
+          "eier*",
           "eigelb",
           "eiklar",
           "vollei*",
@@ -627,7 +627,7 @@
         ],
         "de": [
           "erdnuss*",
-          "erdnüsse"
+          "erdnüsse*"
         ],
         "tr": [
           "yer fıstığı",
@@ -747,14 +747,14 @@
           "turrón"
         ],
         "de": [
-          "schalenfrüchte",
-          "nüsse",
+          "schalenfrüchte*",
+          "nüsse*",
           "nuss",
           "mandel*",
           "haselnuss*",
-          "haselnüsse",
+          "haselnüsse*",
           "walnuss*",
-          "walnüsse",
+          "walnüsse*",
           "cashew*",
           "pekannuss*",
           "paranuss*",
