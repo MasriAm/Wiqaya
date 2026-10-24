@@ -48,6 +48,12 @@ test("terms in several languages", () => {
   assert.deepEqual(ids("malt extract"), ["gluten:certain"]);
 });
 
+test("German trace lines use the dative plural", () => {
+  assert.deepEqual(ids("Kann Spuren von Schalenfrüchten enthalten.", "de"), ["tree_nuts:certain"]);
+  assert.deepEqual(ids("Kann Spuren von Erdnüssen enthalten.", "de"), ["peanuts:certain"]);
+  assert.deepEqual(ids("Kann Spuren von Haselnüssen und Eiern enthalten.", "de").sort(), ["eggs:certain", "tree_nuts:certain"]);
+});
+
 test("safe phrases are not allergens", () => {
   assert.deepEqual(ids("cocoa butter"), []);
   assert.deepEqual(ids("coconut milk"), []);
