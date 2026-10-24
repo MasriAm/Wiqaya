@@ -64,6 +64,8 @@ export interface ProductFacts {
   pairs: Array<[number, number | null]> | null;
   off: { allergens: string[]; traces: string[] } | null;
   suspicions: Suspicion[];
+  /** Not in Open Food Facts: the list was read from an earlier photo of this product (when, in ms). */
+  read_from_photo?: number;
 }
 
 export interface Member {

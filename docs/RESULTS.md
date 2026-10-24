@@ -13,19 +13,64 @@ node --experimental-strip-types bench/score.ts bench/out/labels
 
 ## Latest
 
-| Measure | Result |
-|---|---|
-| Allergens on the label that were flagged (red or amber) | 78/78 (100%) |
-| **False greens** (an allergen on the label shown as no problem) | **0** |
-| Lines the Arabic sticker dropped that were reported | 13/13 (100%) |
-| Blurred or cut-off photos never shown green | 8/8 (100%) |
-| False alarms (flagged for an allergen that isn't there) | 0/372 (0%) |
-| Green when it should be (sharp, whole labels, allergen absent) | 229/229 (100%) |
-| Mean seconds per label (Gemma reading + pairing) | 7.6 |
+### Real photos (24, taken in a shop in Amman)
 
-No misses. Four stickers also get a discrepancy for an allergen they do print (labels 008, 014, 016, 020), where
-Gemma's reading of the sticker left an item out or merged two. These can't change a verdict: a sticker gap only
-names an allergen that is on the original label, which is red already.
+`TESTING_IMAGES/`: phone photos of snacks on the shelf, in English, Arabic, Turkish, German, French, Italian,
+Romanian, Polish, Serbian, Czech and Croatian. 15 show an ingredient list (some cut off, shiny or tiny); 9 show only
+the barcode, the front or the nutrition table. What each pack says was read by eye. Run with
+`web/scripts/real_photos.ts` and `bench/score_real.py`.
+
+| Measure | First run | After the fixes |
+|---|---|---|
+| Allergens printed on the pack that were flagged (red or amber) | 42/42, 4 photos failed | **56/56** (29 red) |
+| **False greens** for an allergen on the pack | 0 | **0** |
+| Photos without an ingredient list never shown green | **6/9** | **9/9** |
+| Requests that failed ("Gemma isn't available") | 4 | **0** |
+| Seconds per photo | 2–30 | 2–58 (most 10–35) |
+
+What the first run found, and what changed:
+
+- **Gemma invented ingredient lists.** On two photos of a biscuit's barcode side (no list visible) it wrote a
+  plausible Turkish list and called it complete, so the product was green for eggs, peanuts, nuts, soy and more. On
+  a chocolate bar's barcode side it read the product's name as its ingredients. Asking Gemma whether a list is
+  visible, or having it copy the printed lines, didn't catch this reliably. Now **a list only counts as whole and
+  legible when a second reading, of a slightly cropped and scaled copy of the photo, agrees with it** (at least 60%
+  of ingredient words in common), and a "list" of one or two items with no "contains" line counts as cut off. Both
+  checks can only lower "complete" and "legible".
+- **Big multi-language panels failed.** The edge check copies the printed lines; on a six-language pack the answer
+  ran past its length limit and the whole scan failed. It now has more room, and uses the lines that came through.
+- "Made in a facility that processes dairy, soy, sesame, celery" is read as a "may contain" line; "dairy" is a milk
+  term. A whole list returned as one item is split (when its English splits the same way), and a heading glued to
+  the first ingredient ("Ingredients: cocoa mass") or read as an item ("Contains:") is removed.
+
+### Synthetic labels (30)
+
+After the changes above (`bench/out/labels2`):
+
+| Measure | Before | After |
+|---|---|---|
+| Allergens on the label that were flagged | 78/78 | 78/78 |
+| **False greens** | **0** | **0** |
+| Lines the Arabic sticker dropped that were reported | 13/13 | 12/13 |
+| Blurred or cut-off photos never shown green | 8/8 | 7/8 |
+| False alarms | 0/372 | 1/372 |
+| Green when it should be | 229/229 | 215/229 |
+| Mean seconds per label | 7.6 | 21.0 |
+
+Honest notes on the drops:
+
+- label-016 (cut off): a whole phrase ("emulsifier: sunflower lecithin") is outside the photo, with no broken word to
+  see. Before, Gemma returned the list as one lumped item the engine didn't understand, so it was amber by accident;
+  split into ingredients, it is understood and green for people who avoid none of them. No check on the text can see
+  a phrase that isn't in the photo.
+- label-008: Gemma copied the original's "may contain peanuts" onto the Arabic sticker, which doesn't have it, so the
+  gap wasn't reported (peanuts are still red from the original label).
+- label-023: Gemma listed the word "Contains:" as an ingredient, an unknown item that made the label amber for the 14
+  test members (the 14 lost greens). Such heading-only items are now dropped; not yet re-measured.
+- The extra reading costs about 6–13 s per label. Reading time varies a little between runs on the GPU.
+
+Not tried yet: preprocessing photos before Gemma (upscaling to 2048 px, auto-contrast and sharpening). An experiment
+is set up (one server per variant on the same 24 photos) but wasn't run to the end.
 
 ## What changed
 

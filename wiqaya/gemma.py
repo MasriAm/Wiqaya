@@ -19,7 +19,9 @@ from wiqaya.config import SETTINGS
 
 
 class GemmaError(RuntimeError):
-    pass
+    def __init__(self, message: str, text: str = ""):
+        super().__init__(message)
+        self.text = text  # the raw answer, when it wasn't valid JSON (for example cut short by the length limit)
 
 
 class Gemma:
@@ -82,7 +84,7 @@ class Gemma:
         try:
             answer = json.loads(text)
         except json.JSONDecodeError as e:
-            raise GemmaError(f"Gemma's answer was not JSON: {text[:200]}") from e
+            raise GemmaError(f"Gemma's answer was not JSON: {text[:200]}", text) from e
         return answer, _stats(j, time.perf_counter() - t)
 
     def run_tools(self, system: str, user: str, tools: dict[str, tuple[dict, Callable[..., Any]]],

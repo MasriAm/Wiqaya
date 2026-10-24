@@ -3,6 +3,11 @@
 Open Food Facts allows 15 product reads and 10 searches per minute, so every answer is cached in SQLite, and
 ``wiqaya prefetch`` downloads the products sold in Jordan ahead of time. Only barcodes and product names are
 sent; nothing about a person.
+
+Many products sold in Jordan aren't in Open Food Facts. When someone photographs the ingredients of one of those
+after scanning its barcode, and the reading passes every check (whole list, legible, two readings agree), it is
+kept with the barcode: the next scan of that product, by anyone, is answered at once. Only product data is kept,
+never who scanned it.
 """
 
 from __future__ import annotations
@@ -31,6 +36,7 @@ class Cache:
         self._lock = threading.Lock()
         with self._db() as db:
             db.execute("CREATE TABLE IF NOT EXISTS products (code TEXT PRIMARY KEY, at REAL, body TEXT)")
+            db.execute("CREATE TABLE IF NOT EXISTS readings (code TEXT PRIMARY KEY, at REAL, body TEXT)")
 
     def _db(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
@@ -45,6 +51,19 @@ class Cache:
     def put(self, code: str, body: dict) -> None:
         with self._lock, self._db() as db:
             db.execute("INSERT OR REPLACE INTO products VALUES (?, ?, ?)", (code, time.time(), json.dumps(body)))
+
+    def get_reading(self, code: str, max_age: float = 365 * 86400) -> tuple[float, dict] | None:
+        """A checked ingredient list read from a photo of this product, and when."""
+        with self._lock, self._db() as db:
+            row = db.execute("SELECT at, body FROM readings WHERE code = ?", (code,)).fetchone()
+        if not row or time.time() - row[0] > max_age:
+            return None
+        return row[0], json.loads(row[1])
+
+    def put_reading(self, code: str, body: dict) -> None:
+        """The newest checked reading wins: a recipe can change."""
+        with self._lock, self._db() as db:
+            db.execute("INSERT OR REPLACE INTO readings VALUES (?, ?, ?)", (code, time.time(), json.dumps(body)))
 
     def count(self) -> int:
         with self._lock, self._db() as db:

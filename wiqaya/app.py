@@ -76,10 +76,22 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
             p = off.fetch(barcode, the_cache())
         except (httpx.HTTPError, ValueError) as e:  # Open Food Facts unreachable: the phone falls back to a photo
             log.warning("open food facts: %s", type(e).__name__)
-            raise HTTPException(503, "product_lookup_failed") from e
-        if not p:
+            p, failed = None, e
+        else:
+            failed = None
+        known = off.to_facts(p) if p else None
+        if not known or not known["label"]:
+            # no ingredient list in Open Food Facts: a checked reading of an earlier photo of this product
+            saved = the_cache().get_reading(barcode)
+            if saved:
+                at, body = saved
+                return {**body, "barcode": barcode, "off": known["off"] if known else None, "suspicions": [],
+                        "read_from_photo": int(at * 1000)}
+        if failed:
+            raise HTTPException(503, "product_lookup_failed") from failed
+        if not known:
             raise HTTPException(404, "not_found")
-        return off.to_facts(p)
+        return known
 
     @app.post("/api/scan")
     async def scan(photos: Annotated[list[UploadFile], File()], hints: Annotated[list[str] | None, Form()] = None,
@@ -125,6 +137,10 @@ def create_app(gemma: Gemma | None = None, relay: Relay | None = None, cache: of
                 facts["brand"] = facts["brand"] or known["brand"]
                 if not facts["label"]:
                     facts["label"] = known["label"]
+            # a list that passed every check is kept with the barcode for the next scan (product data only)
+            lists = [x for x in (original, sticker) if x]
+            if lists and all(x["complete"] and x["legible"] and x["ingredients"] for x in lists):
+                the_cache().put_reading(barcode, {k: facts[k] for k in ("name", "brand", "label", "sticker", "pairs")})
         facts["seconds"] = round(time.perf_counter() - t0, 1)
         return facts
 

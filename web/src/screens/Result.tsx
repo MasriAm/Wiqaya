@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { recipeOf, stickerGaps, verdicts } from "../engine/verdict.ts";
 import { findTerms, understood } from "../engine/match.ts";
 import type { Level, Member, MemberVerdict, ProductFacts, Reason, SafeEntry, TriggerId } from "../engine/types.ts";
-import { ago, describe, joinNames, languageName, levelWord, pillWord, t as tr, triggerName } from "../i18n.ts";
+import { ago, describe, joinNames, languageName, levelWord, pillWord, shortDate, t as tr, triggerName } from "../i18n.ts";
 import { api } from "../lib/api.ts";
 import { newId } from "../lib/circle.ts";
 import { checked, type Lang, type ScanRecord } from "../lib/state.ts";
@@ -154,7 +154,9 @@ export function Result({ id }: { id: string }) {
         : flagged.length === 1
           ? t("resTitleCheckFor", { name: memberName(flagged[0].member_id) })
           : t("resTitleSecondLook");
-  const source = facts.sticker
+  const source = facts.read_from_photo && !scan.thumb
+    ? t("resSubSaved", { date: shortDate(lang, facts.read_from_photo) })
+    : facts.sticker
     ? t("resSubBoth", { lang: languageName(lang, facts.label?.language) })
     : facts.off && !scan.thumb
       ? t("resSubOff", { code: facts.barcode ?? "" })
@@ -337,7 +339,7 @@ export function Result({ id }: { id: string }) {
           <button className="primary" onClick={() => go({ name: "scan" }, true)}>
             <Icon name="scan" /> {t("scanAnother")}
           </button>
-          {facts.off && !facts.sticker && !scan.thumb && (
+          {(facts.off || facts.read_from_photo) && !facts.sticker && !scan.thumb && (
             <button className="secondary" onClick={() => go({ name: "scan", barcode: facts.barcode ?? undefined })}>
               <Icon name="camera" /> {t("addLabelPhoto")}
             </button>
