@@ -9,10 +9,13 @@ the server and not the AI, learns who is allergic to what.
 
 Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop problems before they start".
 
+**Quick links:** [How it works (architecture)](docs/ARCHITECTURE.md) · [Run it](#run-it) ·
+[Demo script](docs/DEMO.md) · [Results](docs/RESULTS.md) · [Privacy](docs/PRIVACY.md)
+
 ## Why
 
-- **11.5%** of 1,629 Jordanian schoolchildren had a parent-reported food allergy, and only **5.7%** a formal
-  diagnosis (eggs, cow's milk and peanuts most common).[^1] About **1 in 124** schoolchildren in Irbid screened
+- More than **1 in 10** Jordanian schoolchildren has a food allergy: **11.5%** of 1,629 children in a 2025 study
+  (eggs, cow's milk and peanuts most common).[^1] About **1 in 124** schoolchildren in Irbid screened
   positive for celiac disease.[^2]
 - Much packaged food in Jordan is imported: the original label is in Italian, Turkish or German, with an Arabic
   sticker on top. "May contain" warnings are usually voluntary, so a sticker can leave one out.
@@ -23,8 +26,8 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 
 | | |
 |---|---|
-| **Scan** | One viewfinder: a barcode is read by itself (Open Food Facts); otherwise the shutter photographs the ingredients, and the Arabic sticker if there is one. The photo is exactly what was framed. |
-| **Check, per person** | A big card per person, with the allergens that caused it, and a tile for every allergen on the label. Red: an avoided ingredient is on the label. Amber: something can't be ruled out (a "may contain" line, an unknown ingredient, a cut-off photo). Green: the whole list was read and nothing on it is avoided. |
+| **Scan** | One viewfinder: a barcode is read by itself (Open Food Facts); otherwise the shutter photographs the ingredients, and the Arabic sticker if there is one. A photo can also be uploaded; if it shows a barcode too, the photo's ingredients still count and the barcode only fills in the rest. |
+| **Check, per person** | A big card per person, with the allergens that caused it, and a tile for every allergen on the label. Red: an avoided ingredient is on the label. Amber: something can't be ruled out (a "may contain" line, a cut-off or unreadable photo, an ingredient Gemma's research suspects). Green: the whole list was read and nothing on it is avoided. Every result reminds you to double-check the label and ask the shop or the chef. |
 | **Original vs Arabic sticker** | Gemma pairs the two ingredient lists across languages; the phone flags anything the sticker leaves out, such as "Può contenere frutta a guscio" (may contain nuts). |
 | **Hidden names** | The EU's 14 major allergens plus halal and vegetarian, in seven languages, and a **Jordanian pack** of local names (jameed, kishk, freekeh, fustuq abeed, turmus, labneh). |
 | **Gemma researches unknowns** | For an ingredient no list knows (E476, an unfamiliar additive), Gemma uses tools (web search and Open Food Facts) and cites its sources. This can only add caution (amber), never clear a product. |
@@ -32,29 +35,22 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 | **Safe list** | Products a parent approved, tied to the exact recipe. If the ingredient list changes, the approval stops counting and a recipe change alert shows. |
 | **Emergency** | One tap calls 911. A card for paramedics (Arabic and English) shows the doctor's plan the parent saved; a text to the family says what was last eaten and where. Wiqaya never decides whether a reaction is happening. |
 | **Eating out** | Take a photo of a restaurant's menu (up to four pages). Gemma reads the dishes and what each is usually made with; the phone sorts them for each person: *avoid* (the menu names the allergen), *ask the staff first* (usually made with it, or the menu doesn't say), and *good to ask for*. Never "safe": a menu rarely lists every ingredient, so it ends with the cook card. |
-| **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen, with a read-aloud button. |
+| **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen. |
 | **Pen expiry** | Gemma reads the expiry date off the epinephrine pen's box; the parent confirms it and gets a reminder before it runs out. |
 | **Consent and control** | Nothing is set up until a parent or guardian agrees. "Delete everything" removes all Wiqaya keeps on the phone. |
 | **Arabic and English, offline shell** | The whole app in both languages (right to left in Arabic). It installs on the home screen and opens without a connection; scans need the server. |
 
 ## How it works
 
-```
- Phone (web app)                               Wiqaya server (open source)
- ┌───────────────────────────────┐   photos,   ┌───────────────────────────────────────┐
- │ camera, barcode (zxing-wasm)  │   barcodes  │ Gemma 4 via Ollama:                   │
- │ ALLERGEN ENGINE — the verdict │ ──────────▶ │   read label · pair lists ·           │
- │ profiles, scans (encrypted)   │             │   research unknowns (tools) · explain │
- │ family circle (AES-GCM, ECDSA)│ ◀────────── │ Open Food Facts lookup + cache        │
- │ emergency: tel:, sms:         │   product   │ relay for encrypted family messages   │
- └───────────────────────────────┘   facts     └───────────────────────────────────────┘
-```
+![Wiqaya architecture](docs/architecture.png)
+
+The full explanation (the three parts, one scan step by step, how a result is decided, the stack, the decisions and
+answers to common technical questions) is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 **Code owns every verdict; Gemma reads.** Gemma turns photos into ingredient lists, matches the original list with
 the Arabic sticker, researches unknown ingredients and writes plain explanations. Whether a product is red, amber
 or green is decided by the engine in [`web/src/engine`](web/src/engine) on the phone, and Gemma's output can only add
-caution. Green requires a complete, legible list where every ingredient is understood: **unknown is never shown as
-safe**.
+caution. Green requires a complete, legible list with nothing the child avoids; **doubt is never shown as safe**.
 
 ### Gemma 4's jobs
 
@@ -88,30 +84,34 @@ More in [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Run it
 
-You need Python 3.10+, [uv](https://docs.astral.sh/uv/), Node 20+ (only to rebuild the app) and
-[Ollama](https://ollama.com) 0.20 or newer.
+You need Python 3.10+, [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com) 0.20 or newer. Node 20+ is
+only needed to change the app's screens.
 
-```bash
-ollama pull gemma4:e4b-it-qat
-uv sync --extra dev
-uv run wiqaya doctor                 # Gemma, Open Food Facts, web search
-uv run wiqaya prefetch               # optional: cache the ~1,250 products Open Food Facts lists for Jordan
-uv run wiqaya serve                  # http://127.0.0.1:8000
-uv run wiqaya serve --host 0.0.0.0 --https   # phones on the same Wi-Fi (the camera needs HTTPS)
-```
+1. Get the code and the model:
+   ```bash
+   git clone https://github.com/MasriAm/Wiqaya.git && cd Wiqaya
+   ollama pull gemma4:e4b-it-qat
+   ```
+2. Start Ollama so it can answer two requests at once (a photo's second reading and its edge check run together):
+   ```bash
+   OLLAMA_NUM_PARALLEL=2 ollama serve          # Windows PowerShell: $env:OLLAMA_NUM_PARALLEL=2; ollama serve
+   ```
+3. In a second terminal, install and start Wiqaya:
+   ```bash
+   uv sync --extra dev
+   uv run wiqaya doctor                        # checks Gemma, Open Food Facts and web search
+   uv run wiqaya serve                         # open http://127.0.0.1:8000
+   ```
+4. To use a phone's camera, put the phone on the same Wi-Fi and run
+   `uv run wiqaya serve --host 0.0.0.0 --https`, then open `https://<laptop-ip>:8000` on the phone and accept the
+   certificate warning (browsers only allow the camera over HTTPS).
+5. Optional: `uv run wiqaya prefetch` caches the ~1,250 products Open Food Facts lists for Jordan.
 
-The built app is committed in `wiqaya/web_dist`, so Node is only needed to change it:
-
-```bash
-npm --prefix web ci && npm --prefix web run build
-```
+The built app is committed in `wiqaya/web_dist`. To change the screens: `npm --prefix web ci && npm --prefix web run build`.
 
 Settings (environment variables): `WIQAYA_MODEL`, `WIQAYA_OLLAMA_URL`, `WIQAYA_DATA` (default `./.wiqaya`),
 `WIQAYA_WEB_SEARCH=0` to turn web search off. If the configured model isn't pulled, Wiqaya uses another
 installed Gemma 4 (the E4B size first) and shows which one in the app's footer.
-
-A photo's second reading and its edge check are sent to Gemma together. Start Ollama with
-`OLLAMA_NUM_PARALLEL=2 ollama serve` so it answers both at once; with one slot they wait in turn.
 
 ## Tests and benchmark
 
@@ -141,7 +141,8 @@ and cut-off photos) with exact ground truth. See [docs/RESULTS.md](docs/RESULTS.
 
 - Wiqaya checks labels. It does not give medical advice and cannot promise a food is safe: labels can be wrong or
   change. When in doubt, don't.
-- The term lists are curated, not exhaustive; anything they don't know is amber, never green.
+- The term lists are curated, not exhaustive. An ingredient they don't know is noted on the result and looked up by
+  Gemma, but a rare name could still be missed: always read the label too.
 - The benchmark is synthetic. Real photos (glare, curved packs, tiny print) are harder.
 - Jordan's own allergen-labelling rule could not be confirmed; Wiqaya doesn't claim labels break any rule.
 
