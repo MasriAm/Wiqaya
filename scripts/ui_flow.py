@@ -6,7 +6,7 @@
 Parent: consents, sets up the family (Sara: peanuts and tree nuts; Omar: gluten, halal, cautious about traces), checks
 Nutella by barcode. Grandma: joins with the invite link and checks Philadelphia (amber for Omar), asks; the parent
 approves and saves the recipe; grandma sees the answer; the safe list has it. Then emergency, profile, cook card,
-child mode, Arabic; Omar joins on his own phone and adds an allergy, which reaches the parent's phone; and a desktop
+Arabic; Omar joins on his own phone and adds an allergy, which reaches the parent's phone; and a desktop
 pass.
 """
 
@@ -104,6 +104,7 @@ def main() -> None:
             expect(p.locator(".verdict-card.green", has_text="Omar")).to_be_visible()
             expect(p.get_by_text("“hazelnuts”").first).to_be_visible()
             expect(p.get_by_text("A red result can't be overridden.")).to_be_visible()
+            expect(p.get_by_text("Always double-check the label, and ask the shop or the chef when in doubt.")).to_be_visible()
         check("barcode: Nutella is red for Sara, green for Omar; red can't be overridden", barcode_scan)
         shot(p, out, "04-result-barcode")
 
@@ -223,17 +224,13 @@ def main() -> None:
         check("profile: doctor's plan and pen expiry saved; the reminder shows", profile)
         shot(p, out, "16-home-reminder")
 
-        def cook_and_child():
+        def cook():
             p.locator("button.quick", has_text="Tell the cook").click()  # on a phone, from the overview
             expect(p.get_by_text("Please help keep our meal safe.")).to_be_visible()
             expect(p.get_by_text("يُرجى المساعدة في تحضير وجبة آمنة")).to_be_visible()
-            shot(p, out, "17-cook-card")
-            p.get_by_role("tab", name="Child mode").click()
-            p.get_by_role("button", name="Sara", exact=True).click()
-            # Sara's latest scan is grandma's Philadelphia (no problem for her)
-            expect(p.get_by_role("heading", name="A grown-up checked this label.")).to_be_visible()
-        check("cook card in both languages; child mode for Sara", cook_and_child)
-        shot(p, out, "18-child")
+            expect(p.get_by_role("tab", name="Child mode")).to_have_count(0)
+        check("cook card in both languages", cook)
+        shot(p, out, "17-cook-card")
 
         def arabic():
             p.goto(a.url)

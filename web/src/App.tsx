@@ -343,7 +343,7 @@ function Sidebar({ route }: { route: Route }) {
 function TopBar({ route }: { route: Route }) {
   const { t, go, me } = useApp();
   const current = NAV.find((n) => active(n, route));
-  const page = route.name === "care" ? t(route.tab === "emergency" ? "tabEmergency" : route.tab === "child" ? "tabChild" : "tabCook") : route.name === "privacy" ? t("privacyData") : current && route.name !== "home" ? t(current.label) : null;
+  const page = route.name === "care" ? t(route.tab === "emergency" ? "tabEmergency" : "tabCook") : route.name === "privacy" ? t("privacyData") : current && route.name !== "home" ? t(current.label) : null;
   return (
     <header className="topbar">
       <div className="crumb">

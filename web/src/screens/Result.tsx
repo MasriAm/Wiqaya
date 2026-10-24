@@ -193,6 +193,7 @@ export function Result({ id }: { id: string }) {
             <VerdictCard key={r.member_id} v={r} name={memberName(r.member_id)} avatar={member(r.member_id)?.avatar} i={i} />
           ))}
         </div>
+        <p className="reminder"><Icon name="shield" /> {t("doubleCheck")}</p>
 
         {request && request.status !== "waiting" && (
           <div className={`decision ${request.status === "approved" ? "ok" : "no"}`}>

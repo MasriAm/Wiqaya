@@ -93,6 +93,7 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
     }
     const watch = new Set<TriggerId>([...member.avoid, ...member.diets]);
     const reasons: Reason[] = [];
+    const unknown = new Set<string>();
     const add = (r: Reason) => {
       const dup = reasons.some((x) => x.kind === r.kind && x.trigger === r.trigger && x.quote === r.quote && x.source === r.source);
       if (!dup) reasons.push(r);
@@ -107,7 +108,7 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
         if (!watch.has(h.trigger)) continue;
         add({ level: member.traces === "avoid" ? "red" : "amber", kind: "may_contain", trigger: h.trigger, quote: h.quote, source: h.source });
       }
-      for (const u of s.unknown) add({ level: "amber", kind: "unknown_ingredient", quote: u, source: "wiqaya" });
+      for (const u of s.unknown) unknown.add(u);
     }
 
     // Open Food Facts' own allergen and trace tags (barcode lookups)
@@ -167,6 +168,9 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
       }
     }
     if (level === "green" && !reasons.some((r) => r.kind === "approved")) reasons.push({ level: "green", kind: "all_clear", source: "wiqaya" });
+    // an ingredient no list knows doesn't make the result amber on its own: the result says so, and Gemma looks it up
+    // (what it suspects is amber). Kept last, after the reason the card shows.
+    for (const u of unknown) reasons.push({ level: "green", kind: "unknown_ingredient", quote: u, source: "wiqaya" });
     // the approval first, then what the label says, most serious first
     reasons.sort((a, b) => Number(b.kind === "approved") - Number(a.kind === "approved") || rank(b.level) - rank(a.level));
     return { member_id: member.id, level, reasons };

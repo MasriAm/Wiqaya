@@ -41,8 +41,7 @@ browser):
    restaurant's menu. In about ten seconds: *12 good to ask for · 6 ask the staff first · 9 avoid*. Tabbouleh is
    under Avoid for Omar (the menu says bulgur), knafeh too (wheat pastry); hummus is fine for both. Tap Sara to see
    only Sara's view. Nothing is ever "safe" on a menu, so it ends with *Show the cook card*. Gemma saw the menu only.
-8. **Cook card and child mode (10 s).** Cook card: Sara's allergies with every hidden name, in Arabic and English.
-   Child mode: a face that tells Sara, in Arabic and English, what a grown-up found on the last snack's label.
+8. **Cook card (10 s).** Sara's allergies with every hidden name, in Arabic and English.
 9. **Emergency (20 s).** Tap **Emergency** → Sara: *Call 911 now* (use a teammate's number on stage), the doctor's
    plan word for word, *Show to paramedics* in Arabic or English, and the text to the family: "Sara may be having
    an allergic reaction. Last scanned: Nutella (not suitable) at 4:12 pm. Location: …". Wiqaya doesn't decide

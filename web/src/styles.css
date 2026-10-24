@@ -2475,3 +2475,16 @@ button.person-main {
 .tell-emoji {
   font-size: 34px;
 }
+
+.reminder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-2, #f1f5f4);
+  color: var(--muted, #4d5b5a);
+  font-size: 0.9rem;
+}
+.reminder svg { flex: none; width: 18px; height: 18px; }
