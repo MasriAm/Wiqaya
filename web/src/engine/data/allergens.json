@@ -42,7 +42,21 @@
           "~cereal",
           "~cereals",
           "~biscuit",
-          "~wafer"
+          "~wafer",
+          "~bread",
+          "~pita",
+          "~pitta",
+          "~pastry",
+          "~filo",
+          "~phyllo",
+          "~dough",
+          "~bun",
+          "~buns",
+          "~croutons",
+          "~pasta",
+          "~noodles",
+          "~tortilla",
+          "~crust"
         ],
         "ar": [
           "غلوتين",
@@ -69,7 +83,10 @@
           "~نشا",
           "~حبوب",
           "~بسكويت",
-          "~ويفر"
+          "~ويفر",
+          "~خبز",
+          "~عجين",
+          "~معجنات"
         ],
         "it": [
           "glutine",
@@ -186,6 +203,9 @@
           "buckwheat",
           "gluten-free",
           "gluten free",
+          "rice noodles",
+          "corn tortilla",
+          "corn tortillas",
           "glucose syrup",
           "dextrose"
         ],
@@ -279,6 +299,8 @@
       "terms": {
         "en": [
           "milk",
+          "dairy",
+          "dairy products",
           "milk powder",
           "skimmed milk",
           "whole milk",
@@ -307,6 +329,8 @@
         ],
         "ar": [
           "حليب",
+          "ألبان",
+          "منتجات الألبان",
           "حليب مجفف",
           "حليب بودرة",
           "بودرة الحليب",

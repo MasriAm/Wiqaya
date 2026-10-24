@@ -19,7 +19,9 @@ from wiqaya.config import SETTINGS
 
 
 class GemmaError(RuntimeError):
-    pass
+    def __init__(self, message: str, text: str = ""):
+        super().__init__(message)
+        self.text = text  # the raw answer, when it wasn't valid JSON (for example cut short by the length limit)
 
 
 class Gemma:
@@ -36,7 +38,10 @@ class Gemma:
             return {"available": False, "model": self.model, "reason": "ollama_unreachable"}
         names = {m.get("name") for m in tags} | {m.get("model") for m in tags}
         if self.model not in names and f"{self.model}:latest" not in names:
-            return {"available": False, "model": self.model, "ollama": v, "reason": "model_missing"}
+            other = fallback(names)
+            if not other:
+                return {"available": False, "model": self.model, "ollama": v, "reason": "model_missing"}
+            self.model = other  # the configured build isn't pulled, but another Gemma 4 is
         return {"available": True, "model": self.model, "ollama": v}
 
     def warm(self) -> float:
@@ -52,6 +57,11 @@ class Gemma:
             r = httpx.post(f"{self.url}/api/chat", json=body, timeout=httpx.Timeout(SETTINGS.gemma_timeout, connect=5.0))
         except httpx.HTTPError as e:
             raise GemmaError(f"Gemma did not answer: {e}") from e
+        if r.status_code == 404 and body.get("model") == self.model:
+            # the model isn't pulled: switch to another installed Gemma 4, once
+            self.status()
+            if self.model != body["model"]:
+                return self._post({**body, "model": self.model})
         if r.status_code != 200:
             raise GemmaError(f"Gemma returned {r.status_code}: {r.text[:300]}")
         return r.json()
@@ -74,7 +84,7 @@ class Gemma:
         try:
             answer = json.loads(text)
         except json.JSONDecodeError as e:
-            raise GemmaError(f"Gemma's answer was not JSON: {text[:200]}") from e
+            raise GemmaError(f"Gemma's answer was not JSON: {text[:200]}", text) from e
         return answer, _stats(j, time.perf_counter() - t)
 
     def run_tools(self, system: str, user: str, tools: dict[str, tuple[dict, Callable[..., Any]]],
@@ -110,6 +120,12 @@ class Gemma:
                 log.append({"tool": name, "args": args, "result": result})
                 messages.append({"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)[:6000]})
         return messages[1:], log
+
+
+def fallback(names: set) -> str | None:
+    """Another installed Gemma 4 to use when the configured one isn't pulled: the E4B size first."""
+    gemma = sorted(n for n in names if n and n.startswith("gemma4"))
+    return next((n for n in gemma if n.startswith("gemma4:e4b")), gemma[0] if gemma else None)
 
 
 def _stats(j: dict, wall: float) -> dict:

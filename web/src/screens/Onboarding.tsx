@@ -5,7 +5,7 @@ import { newId, parseInvite, type Invite } from "../lib/circle.ts";
 import { readFrame, startCamera, stopCamera } from "../lib/camera.ts";
 import { blankProfile, wipe, type Person, type Profile } from "../lib/state.ts";
 import { Heading, Icon, Modal } from "../ui.tsx";
-import { MemberCard, ProfileEditor, validProfile } from "./ProfileEditor.tsx";
+import { AllergyPicker, MemberCard, ProfileEditor, validProfile } from "./ProfileEditor.tsx";
 
 /** Consent first: what Wiqaya keeps and where, then create a family or join one. */
 export function Welcome() {
@@ -21,6 +21,28 @@ export function Welcome() {
     <>
       <Heading eyebrow={t("welEyebrow")} title={t("welTitle")} lead={t("welLead")} />
       <div className="content stack">
+        <div className="start-grid">
+          <section className="big-card start-card">
+            <div className="start-emoji" aria-hidden="true">👩‍👧</div>
+            <h2>{t("startParentTitle")}</h2>
+            <p>{t("startParentText")}</p>
+            <label className="check">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              {t("consent")}
+            </label>
+            <button className="primary wide" disabled={!agreed} onClick={() => go({ name: "setup" })}>
+              {t("createCircle")} <Icon name="arrow" />
+            </button>
+          </section>
+          <section className="big-card start-card">
+            <div className="start-emoji" aria-hidden="true">📱</div>
+            <h2>{t("startJoinTitle")}</h2>
+            <p>{t("startJoinText")}</p>
+            <button className="secondary wide" onClick={() => go({ name: "join" })}>
+              <Icon name="qr" /> {t("joinCircle")}
+            </button>
+          </section>
+        </div>
         <section className="big-card">
           <h2 className="icon-title">
             <Icon name="shield" /> {t("privacyByDesign")}
@@ -35,18 +57,6 @@ export function Welcome() {
               </div>
             </div>
           ))}
-          <label className="check">
-            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-            {t("consent")}
-          </label>
-          <div className="row">
-            <button className="primary" disabled={!agreed} onClick={() => go({ name: "setup" })}>
-              {t("createCircle")}
-            </button>
-            <button className="secondary" disabled={!agreed} onClick={() => go({ name: "join" })}>
-              <Icon name="qr" /> {t("joinCircle")}
-            </button>
-          </div>
         </section>
         <section className="big-card">
           <h3>{t("controlTitle")}</h3>
@@ -68,7 +78,7 @@ export function DeleteModal({ onClose }: { onClose: () => void }) {
       <h2>{t("deleteConfirmTitle")}</h2>
       <p>{t("deleteConfirmText")}</p>
       <button className="danger-btn wide" onClick={() => {
-        update((s) => ({ ...s, me: null, circle: null, members: [], people: [], scans: [], feed: [], safe: [], requests: [], cursor: 0, seen: [], profilesVersion: 0, familyName: "" }));
+        update((s) => ({ ...s, me: null, circle: null, members: [], people: [], scans: [], feed: [], safe: [], requests: [], cursor: 0, seen: [], profilesVersion: 0, familyName: "", menus: [], myChoice: null, choices: [] }));
         toast(t("deleted"));
         wipe().then(() => location.replace("/"));
       }}>
@@ -112,7 +122,7 @@ export function Setup() {
           setEditing(null);
         }}>
           <ProfileEditor value={editing} onChange={setEditing} emergency />
-          {!validProfile(editing) && <p className="small-note">{t("noAllergiesYet")}</p>}
+          {editing.name.trim() && !editing.avoid.length && !editing.diets.length && <p className="small-note">{t("noAllergiesYet", { name: editing.name.trim() })}</p>}
           <div className="row" style={{ marginTop: 20 }}>
             <button className="primary" type="submit" disabled={!validProfile(editing)}>
               {t("save")} <Icon name="arrow" />
@@ -175,8 +185,9 @@ export function Join({ invite }: { invite: Invite | null }) {
   const [pasted, setPasted] = useState("");
   const [name, setName] = useState("");
   const [scanning, setScanning] = useState(false);
-  // a caregiver can arrive straight from an invite link, past the welcome screen: ask for consent here too
+  // a grandparent can arrive straight from an invite link, past the welcome screen: ask for consent here too
   const [agreed, setAgreed] = useState(false);
+  const [picked, setPicked] = useState<Profile>(blankProfile(""));
   const video = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -207,20 +218,28 @@ export function Join({ invite }: { invite: Invite | null }) {
     };
   }, [scanning, t, toast]);
 
+  const child = inv?.r === "child";
   const join = () => {
     if (!inv) return;
-    const me: Person = { id: randomId(9), name: name.trim(), role: inv.r };
-    update((s) => ({ ...s, me, circle: { id: inv.c, key: inv.k, parentPub: inv.p, ...(inv.s ? { parentPriv: inv.s } : {}) }, people: [me], cursor: 0 }));
+    const me: Person = child ? { id: randomId(9), name: inv.n ?? "", role: "child", member_id: inv.m } : { id: randomId(9), name: name.trim(), role: "grandparent" };
+    update((s) => ({ ...s, me, circle: { id: inv.c, key: inv.k, parentPub: inv.p }, people: [me], cursor: 0 }));
     setTimeout(async () => {
       await share({ t: "hello", id: newId(), from: me });
-      toast(t("joinedAs", { role: t(inv.r === "parent" ? "parent" : "caregiver") }));
+      if (child && (picked.avoid.length || picked.diets.length)) {
+        await share({ t: "choice", id: newId(), from: me, at: Date.now(), member_id: inv.m!, avoid: picked.avoid, diets: picked.diets, celiac: !!picked.celiac });
+      }
+      toast(t(child ? "joinedChild" : "joinedGrandparent"));
       go({ name: "home" }, true);
     }, 0);
   };
 
   return (
     <>
-      <Heading eyebrow={t("joinEyebrow")} title={t("joinTitle")} lead={inv ? t(inv.r === "parent" ? "joinAsParent" : "joinAsCaregiver") : t("joinHelp")} />
+      <Heading
+        eyebrow={t("joinEyebrow")}
+        title={inv && child ? t("joinChildTitle", { name: inv.n ?? "" }) : t("joinTitle")}
+        lead={inv ? t(child ? "joinAsChild" : "joinAsGrandparent") : t("joinHelp")}
+      />
       <div className="content stack">
         {!inv ? (
           <section className="big-card">
@@ -244,6 +263,17 @@ export function Join({ invite }: { invite: Invite | null }) {
               {t("next")}
             </button>
           </section>
+        ) : child ? (
+          <form className="big-card" onSubmit={(e) => {
+            e.preventDefault();
+            join();
+          }}>
+            <AllergyPicker value={picked} onChange={setPicked} />
+            <p className="small-note">{t("choiceNote")}</p>
+            <button className="primary wide" type="submit" style={{ marginTop: 18 }}>
+              {t(picked.avoid.length || picked.diets.length ? "joinChildGo" : "joinChildLater")} <Icon name="arrow" />
+            </button>
+          </form>
         ) : (
           <form className="big-card" onSubmit={(e) => {
             e.preventDefault();

@@ -1,9 +1,11 @@
 // The app's state, and how it is saved: encrypted with a device key, in IndexedDB.
+import type { MenuFacts } from "../engine/menu.ts";
 import type { Level, Member, MemberVerdict, ProductFacts, SafeEntry } from "../engine/types.ts";
 import { newDeviceKey, openLocal, sealLocal } from "./crypto.ts";
 
 export type Lang = "en" | "ar";
-export type Role = "parent" | "caregiver";
+/** The parent owns the family; a child has their own phone and profile; a grandparent scans and asks. */
+export type Role = "parent" | "child" | "grandparent";
 
 export interface Contact {
   name: string;
@@ -17,12 +19,25 @@ export interface Profile extends Member {
   /** Celiac disease: shown as a condition; it always adds gluten to what is avoided. */
   celiac?: boolean;
   emergency: { plan: string; meds: string; contacts: Contact[]; epi_expiry: string };
+  /** When the parent last took in the allergies this child chose on their own phone. */
+  childAt?: number;
+}
+
+/** Allergies a child chose on their own phone, until a parent's signed profile includes them. */
+export interface Choice {
+  at: number;
+  member_id: string;
+  avoid: Profile["avoid"];
+  diets: Profile["diets"];
+  celiac: boolean;
 }
 
 export interface Person {
   id: string;
   name: string;
   role: Role;
+  /** A child's own profile. */
+  member_id?: string;
 }
 
 export interface Circle {
@@ -79,6 +94,20 @@ export interface AppState {
   requests: AskRequest[];
   cursor: number;
   seen: string[];
+  /** On a child's phone: what they chose, used until the parent's profile takes it in. */
+  myChoice: Choice | null;
+  /** On the parent's phone: children's choices still to take in. */
+  choices: (Choice & { from: string })[];
+  /** Restaurant menus checked on this phone, newest first. */
+  menus: MenuRecord[];
+}
+
+export interface MenuRecord {
+  id: string;
+  at: number;
+  /** Where it came from: the link, or the file names. */
+  source: string;
+  facts: MenuFacts;
 }
 
 export const EMPTY: AppState = {
@@ -95,6 +124,9 @@ export const EMPTY: AppState = {
   requests: [],
   cursor: 0,
   seen: [],
+  myChoice: null,
+  choices: [],
+  menus: [],
 };
 
 function navigatorLang(): Lang {
@@ -150,7 +182,10 @@ export async function load(): Promise<AppState> {
   try {
     const box = await get<{ iv: Uint8Array<ArrayBuffer>; data: ArrayBuffer }>("state");
     if (!box) return EMPTY;
-    return { ...EMPTY, ...(await openLocal<AppState>(await deviceKey(), box)) };
+    const s = { ...EMPTY, ...(await openLocal<AppState>(await deviceKey(), box)) };
+    // caregivers from before the roles changed are grandparents now
+    const role = (p: Person): Person => ((p.role as string) === "caregiver" ? { ...p, role: "grandparent" } : p);
+    return { ...s, me: s.me && role(s.me), people: s.people.map(role) };
   } catch {
     return EMPTY;
   }
@@ -159,7 +194,7 @@ export async function load(): Promise<AppState> {
 let saving: Promise<void> = Promise.resolve();
 export function save(state: AppState): Promise<void> {
   // keep the newest 60 scans and 40 feed items on the phone
-  const trimmed = { ...state, scans: state.scans.slice(0, 60), feed: state.feed.slice(0, 40), seen: state.seen.slice(-400) };
+  const trimmed = { ...state, scans: state.scans.slice(0, 60), feed: state.feed.slice(0, 40), seen: state.seen.slice(-400), menus: state.menus.slice(0, 8) };
   saving = saving.then(async () => put("state", await sealLocal(await deviceKey(), trimmed))).catch(() => undefined);
   return saving;
 }
@@ -175,4 +210,17 @@ export async function wipe(): Promise<void> {
 
 export function blankProfile(id: string): Profile {
   return { id, name: "", avatar: "", avoid: [], diets: [], traces: "avoid", emergency: { plan: "", meds: "", contacts: [], epi_expiry: "" } };
+}
+
+/** The profiles this phone checks against: on a child's phone, only their own, with their own choice added in until
+ * the parent's profile takes it (a child's choice can only add caution). */
+export function checked(state: AppState): Profile[] {
+  const me = state.me;
+  if (me?.role !== "child") return state.members;
+  const c = state.myChoice;
+  const mine = state.members.find((m) => m.id === me.member_id) ?? (c ? { ...blankProfile(c.member_id), name: me.name } : null);
+  if (!mine) return [];
+  if (!c || c.member_id !== mine.id) return [mine];
+  const avoid = [...new Set([...mine.avoid, ...c.avoid])];
+  return [{ ...mine, avoid, diets: [...new Set([...mine.diets, ...c.diets])], celiac: mine.celiac || c.celiac }];
 }

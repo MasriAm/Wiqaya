@@ -1,7 +1,7 @@
 // Encryption for the family circle and for what the phone stores.
 // * Family key: AES-GCM 256, random, shared only inside the invite QR code (in the URL fragment, which browsers
 //   never send to a server).
-// * Parent key: ECDSA P-256. Profile updates and approvals are signed, so a caregiver's phone accepts them only
+// * Parent key: ECDSA P-256. Profile updates and approvals are signed, so a child's or grandparent's phone accepts them only
 //   from a parent.
 // * Device key: AES-GCM, non-extractable, kept in IndexedDB; the app's saved state is encrypted with it.
 

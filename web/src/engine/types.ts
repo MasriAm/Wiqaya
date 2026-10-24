@@ -64,6 +64,8 @@ export interface ProductFacts {
   pairs: Array<[number, number | null]> | null;
   off: { allergens: string[]; traces: string[] } | null;
   suspicions: Suspicion[];
+  /** Not in Open Food Facts: the list was read from an earlier photo of this product (when, in ms). */
+  read_from_photo?: number;
 }
 
 export interface Member {
@@ -99,7 +101,8 @@ export type ReasonKind =
   | "not_compared" // two labels, but they could not be compared
   | "recipe_changed" // approved before, but the ingredients changed
   | "approved" // a parent approved this product for this member
-  | "all_clear"; // nothing found, everything understood
+  | "all_clear" // nothing found, everything understood
+  | "no_allergies"; // the profile has no allergies yet (a child still choosing them), so nothing can be cleared
 
 export type Source = "label" | "sticker" | "open_food_facts" | "jordan_pack" | "gemma" | "safe_list" | "wiqaya";
 

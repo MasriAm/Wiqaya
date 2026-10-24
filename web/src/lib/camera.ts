@@ -54,13 +54,43 @@ export async function readFile(file: Blob, kind: "product" | "qr" = "product"): 
   return res.find((r) => r.isValid && r.text)?.text ?? null;
 }
 
-/** A full-resolution photo from the video. */
+/** A full-resolution photo of what the viewfinder shows. The video fills its box ("object-fit: cover"), so the edges
+ * of the camera's frame are hidden; the photo is cut the same way, so it looks exactly as framed, not zoomed out. */
 export async function capture(video: HTMLVideoElement): Promise<Blob> {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  const box = video.clientWidth / Math.max(1, video.clientHeight);
+  let sw = vw;
+  let sh = vh;
+  if (video.clientWidth && video.clientHeight) {
+    if (vw / vh > box) sw = Math.round(vh * box);
+    else sh = Math.round(vw / box);
+  }
   const c = document.createElement("canvas");
-  c.width = video.videoWidth;
-  c.height = video.videoHeight;
-  c.getContext("2d")!.drawImage(video, 0, 0);
+  c.width = sw;
+  c.height = sh;
+  c.getContext("2d")!.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, sw, sh);
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("capture"))), "image/jpeg", 0.92));
+}
+
+/** A photo chosen from the phone, made the size of a camera shot: phones save 12-48 MP photos that can be larger than
+ * the server takes, and Gemma reads no more from them. Anything that isn't an image the browser can open is sent as it is. */
+export async function shrink(file: Blob, max = 2560): Promise<Blob> {
+  if (!file.type.startsWith("image/")) return file;
+  let bmp: ImageBitmap;
+  try {
+    bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return file;
+  }
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && file.type === "image/jpeg" && file.size < 4 * 1024 * 1024) return file;
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * scale);
+  c.height = Math.round(bmp.height * scale);
+  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return new Promise((resolve) => c.toBlob((b) => resolve(b ?? file), "image/jpeg", 0.9));
 }
 
 /** A small preview (data URL) of a photo, kept on the phone. */

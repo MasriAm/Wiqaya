@@ -6,7 +6,7 @@ import { useApp } from "../App.tsx";
 import { Heading, Icon, Modal, Pill, ProductThumb } from "../ui.tsx";
 import { FindingRow, findings, Ingredients, safeEntry } from "./Result.tsx";
 
-/** A parent answers a caregiver's question. Only amber results can be approved; red stays red. */
+/** A parent answers a child's or grandparent's question. Only amber results can be approved; red stays red. */
 export function RequestScreen({ id }: { id: string }) {
   const { t, back, state, share, me, isParent } = useApp();
   const req = state.requests.find((r) => r.id === id);

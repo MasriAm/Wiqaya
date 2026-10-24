@@ -2,18 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { recipeOf, stickerGaps, verdicts } from "../engine/verdict.ts";
 import { findTerms, understood } from "../engine/match.ts";
 import type { Level, Member, MemberVerdict, ProductFacts, Reason, SafeEntry, TriggerId } from "../engine/types.ts";
-import { ago, describe, joinNames, languageName, levelWord, pillWord, t as tr, triggerName } from "../i18n.ts";
+import { ago, describe, joinNames, languageName, levelWord, pillWord, shortDate, t as tr, triggerName } from "../i18n.ts";
 import { api } from "../lib/api.ts";
 import { newId } from "../lib/circle.ts";
-import type { Lang, ScanRecord } from "../lib/state.ts";
+import { checked, type Lang, type ScanRecord } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
-import { Heading, Icon, Pill, ProductThumb, Spinner } from "../ui.tsx";
+import { allergenGlyph, Avatar, Heading, Icon, Pill, ProductThumb, Spinner } from "../ui.tsx";
 
 const ALL: TriggerId[] = ["gluten", "milk", "eggs", "peanuts", "tree_nuts", "pine_nuts", "sesame", "soy", "fish", "crustaceans", "molluscs", "celery", "mustard", "sulphites", "lupin", "halal", "vegetarian"];
-/** A pretend member who avoids everything: used to ask Gemma about *all* of a product's findings, so the request
- * never reveals which allergy this family has. */
+/** A pretend member who avoids everything: used to show *all* of a product's allergens, and to ask Gemma about all of
+ * its findings, so the request never reveals which allergy this family has. */
 const EVERYONE: Member = { id: "*", name: "*", avoid: ALL.filter((x) => x !== "halal" && x !== "vegetarian") as Member["avoid"], diets: ["halal", "vegetarian"], traces: "avoid" };
 const ORDER = { red: 0, amber: 1, green: 2 } as const;
+/** How a label names an allergen, strongest first. */
+const KINDS = ["contains", "sticker_gap", "likely", "may_contain", "gemma_suspects"] as const;
+type Kind = (typeof KINDS)[number];
 
 export function findScan(scans: ScanRecord[], requests: { scan: ScanRecord }[], id: string): ScanRecord | undefined {
   return scans.find((s) => s.id === id) ?? requests.find((r) => r.scan.id === id)?.scan;
@@ -50,7 +53,7 @@ export function findings(results: MemberVerdict[], members: Member[]): Finding[]
   return [...out.values()].sort((a, b) => ORDER[worst(a.levels.map((l) => l.level))] - ORDER[worst(b.levels.map((l) => l.level))]);
 }
 
-/** What the result means, in plain sentences, for reading aloud and for "What this means". */
+/** What the result means, in plain sentences, for reading aloud. */
 export function meaning(lang: Lang, results: MemberVerdict[], members: Member[], productName: string | null): string[] {
   const lines = results.map((r) => {
     const name = members.find((m) => m.id === r.member_id)?.name ?? "";
@@ -59,6 +62,25 @@ export function meaning(lang: Lang, results: MemberVerdict[], members: Member[],
     return first ? `${head}. ${describe(lang, first, name)}` : `${head}.`;
   });
   return [productName ?? "", ...lines].filter(Boolean);
+}
+
+/** Every allergen the label names, whoever it matters to: the strongest way it is named, and the words. */
+interface Named {
+  trigger: TriggerId;
+  kind: Kind;
+  quote: string;
+  urls?: string[];
+}
+
+function named(facts: ProductFacts): Named[] {
+  const out = new Map<TriggerId, Named>();
+  for (const r of verdicts(facts, [EVERYONE])[0].reasons) {
+    if (!r.trigger || !(KINDS as readonly string[]).includes(r.kind)) continue;
+    const k = r.kind as Kind;
+    const prev = out.get(r.trigger);
+    if (!prev || KINDS.indexOf(k) < KINDS.indexOf(prev.kind)) out.set(r.trigger, { trigger: r.trigger, kind: k, quote: r.quote ?? "", urls: r.urls });
+  }
+  return [...out.values()].sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind));
 }
 
 export function Result({ id }: { id: string }) {
@@ -70,12 +92,13 @@ export function Result({ id }: { id: string }) {
   const started = useRef(false);
   const lang = state.lang;
   const other: Lang = lang === "ar" ? "en" : "ar";
+  const members = checked(state);
 
   const facts = scan?.facts;
   // most serious first
   const results = useMemo(
-    () => (facts ? verdicts(facts, state.members, state.safe).sort((a, b) => ORDER[a.level] - ORDER[b.level]) : []),
-    [facts, state.members, state.safe],
+    () => (facts ? verdicts(facts, members, state.safe).sort((a, b) => ORDER[a.level] - ORDER[b.level]) : []),
+    [facts, members, state.safe],
   );
 
   // ingredients no list knows: Gemma looks them up (with web search and Open Food Facts) in the background
@@ -94,7 +117,7 @@ export function Result({ id }: { id: string }) {
       .then(({ suspicions }) => {
         update((s) => ({
           ...s,
-          scans: s.scans.map((x) => (x.id === scan.id ? { ...x, researched: true, facts: { ...x.facts, suspicions }, verdicts: verdicts({ ...x.facts, suspicions }, s.members, s.safe) } : x)),
+          scans: s.scans.map((x) => (x.id === scan.id ? { ...x, researched: true, facts: { ...x.facts, suspicions }, verdicts: verdicts({ ...x.facts, suspicions }, checked(s), s.safe) } : x)),
         }));
       })
       .catch(() => undefined)
@@ -111,19 +134,29 @@ export function Result({ id }: { id: string }) {
   }
 
   const overall = worst(results.map((r) => r.level));
-  const memberName = (mid: string) => state.members.find((m) => m.id === mid)?.name ?? "";
+  const member = (mid: string) => members.find((m) => m.id === mid);
+  const memberName = (mid: string) => member(mid)?.name ?? "";
   const request = state.requests.find((r) => r.scan.id === scan.id);
   const gaps = stickerGaps(facts);
-  const found = findings(results, state.members);
-  const greens = results.filter((r) => r.level === "green");
   const reds = results.filter((r) => r.level === "red");
-  const ambers = results.filter((r) => r.level === "amber");
+  const ambers = results.filter((r) => r.level === "amber" && !r.reasons.some((x) => x.kind === "no_allergies"));
   const cutOff = facts.label && (!facts.label.complete || !facts.label.legible);
   const parents = state.people.filter((p) => p.role === "parent");
+  const onLabel = named(facts);
+  const avoided = new Set<string>(members.flatMap((m) => [...m.avoid, ...m.diets]));
 
+  const flagged = results.filter((r) => r.level !== "green");
   const title =
-    overall === "green" ? t("resTitleClear") : results.filter((r) => r.level !== "green").length === 1 && reds.length === 1 ? t("resTitleOneRed", { name: memberName(reds[0].member_id) }) : t("resTitleSecondLook");
-  const source = facts.sticker
+    overall === "green"
+      ? t("resTitleClear")
+      : flagged.every((r) => r.level === "red")
+        ? t("resTitleOneRed", { name: joinNames(lang, flagged.map((r) => memberName(r.member_id))) })
+        : flagged.length === 1
+          ? t("resTitleCheckFor", { name: memberName(flagged[0].member_id) })
+          : t("resTitleSecondLook");
+  const source = facts.read_from_photo && !scan.thumb
+    ? t("resSubSaved", { date: shortDate(lang, facts.read_from_photo) })
+    : facts.sticker
     ? t("resSubBoth", { lang: languageName(lang, facts.label?.language) })
     : facts.off && !scan.thumb
       ? t("resSubOff", { code: facts.barcode ?? "" })
@@ -131,8 +164,7 @@ export function Result({ id }: { id: string }) {
 
   const explain = async () => {
     setExplaining(true);
-    const all = verdicts(facts, [EVERYONE])[0].reasons.filter((r) => r.trigger && r.quote && ["contains", "likely", "may_contain", "sticker_gap"].includes(r.kind));
-    const items = all.map((r) => ({ trigger: r.trigger!, quote: r.quote! })).filter((f, i, a) => a.findIndex((x) => x.trigger === f.trigger && x.quote === f.quote) === i);
+    const items = onLabel.filter((n) => n.quote).map((n) => ({ trigger: n.trigger, quote: n.quote }));
     try {
       setExplained((await api.explain(items, lang)).items);
     } catch {
@@ -152,7 +184,7 @@ export function Result({ id }: { id: string }) {
   };
 
   const speak = () => {
-    const u = new SpeechSynthesisUtterance([...meaning(lang, results, state.members, facts.name), t("checkNotGuarantee")].join(". "));
+    const u = new SpeechSynthesisUtterance([...meaning(lang, results, members, facts.name), t("checkNotGuarantee")].join(". "));
     u.lang = lang === "ar" ? "ar-JO" : "en-GB";
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
@@ -162,6 +194,35 @@ export function Result({ id }: { id: string }) {
     <>
       <Heading eyebrow={overall === "green" ? t("resEyebrowClear") : t("resEyebrowFlag")} title={title} lead={source} />
       <div className="content stack">
+        <section className="big-card product-card">
+          <div className="row">
+            <ProductThumb name={facts.name} thumb={scan.thumb} big />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 className="product-name">{facts.name ?? t("unnamedProduct")}</h2>
+              <p>
+                {[facts.brand, t("scannedByAgo", { name: scan.by.id === me?.id ? t("you") : scan.by.name, ago: ago(lang, scan.at) })].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <button className="icon-btn" onClick={speak} aria-label={t("readAloud")}>
+              <Icon name="sound" />
+            </button>
+          </div>
+        </section>
+
+        <div className="verdicts" role="status">
+          {results.map((r, i) => (
+            <VerdictCard key={r.member_id} v={r} name={memberName(r.member_id)} avatar={member(r.member_id)?.avatar} i={i} />
+          ))}
+        </div>
+
+        {request && request.status !== "waiting" && (
+          <div className={`decision ${request.status === "approved" ? "ok" : "no"}`}>
+            <b>{t(request.status === "approved" ? "decisionApproved" : "decisionRefused", { by: request.answeredBy ?? "" })}</b>
+            {request.note && <span> · “{request.note}”</span>}
+            {request.status === "approved" && <p>{t("decisionStill")}</p>}
+          </div>
+        )}
+
         {cutOff && (
           <div className="warning row spread" role="alert">
             <span>⚠ {facts.label!.complete ? t("unreadableWarn") : t("incompleteWarn")}</span>
@@ -171,113 +232,69 @@ export function Result({ id }: { id: string }) {
           </div>
         )}
 
-        <section className="big-card">
-          <div className="row">
-            <ProductThumb name={facts.name} thumb={scan.thumb} big />
-            <div>
-              <h2 className="product-name">{facts.name ?? t("unnamedProduct")}</h2>
-              <p>
-                {[facts.brand, t("scannedByAgo", { name: scan.by.id === me?.id ? t("you") : scan.by.name, ago: ago(lang, scan.at) })].filter(Boolean).join(" · ")}
-              </p>
+        {facts.sticker && (gaps.ingredients.length || gaps.statements.length) ? (
+          <section className="danger-box sticker-alert">
+            <h3>⚠ {t("stickerAlertTitle")}</h3>
+            <p>{t("stickerAlertLead")}</p>
+            <div className="tiles">
+              {[...new Set([...gaps.statements.flatMap((s) => s.missing), ...gaps.ingredients.flatMap((i) => i.missing)])].map((tr) => (
+                <span key={tr} className="tile hit">
+                  <span className="glyph">{allergenGlyph(tr)}</span>
+                  <b>{triggerName(lang, tr)}</b>
+                  <small>{t("missingFromSticker")}</small>
+                </span>
+              ))}
             </div>
-          </div>
-          <div className="row summary-banner" role="status">
-            {results.map((r) => (
-              <Pill key={r.member_id} level={r.level} big>
-                ● {t("memberPill", { name: memberName(r.member_id), level: levelWord(lang, r.level) })}
-              </Pill>
-            ))}
-          </div>
-          {request && request.status !== "waiting" && (
-            <div className={`decision ${request.status === "approved" ? "ok" : "no"}`}>
-              <b>{t(request.status === "approved" ? "decisionApproved" : "decisionRefused", { by: request.answeredBy ?? "" })}</b>
-              {request.note && <span> · “{request.note}”</span>}
-              {request.status === "approved" && <p>{t("decisionStill")}</p>}
-            </div>
-          )}
-        </section>
+          </section>
+        ) : facts.sticker ? (
+          <p className="notice-line">✓ {t("stickerMatch")}</p>
+        ) : null}
 
-        {facts.sticker &&
-          (gaps.ingredients.length || gaps.statements.length ? (
-            <section className="danger-box">
-              <h3>⚠ {t("stickerAlertTitle")}</h3>
-              <p>{t("stickerAlertLead")}</p>
-              <div className="compare">
-                <div>
-                  <small>{t("originalLabel", { lang: languageName(lang, facts.label?.language) })}</small>
-                  {gaps.statements.map((s) => (
-                    <div key={s.kind}>
-                      “{facts.label?.[s.kind] ?? ""}”
-                      <br />
-                      <b>{s.missing.map((m) => triggerName(lang, m)).join(", ")}</b>
-                    </div>
-                  ))}
-                  {gaps.ingredients.map((i) => (
-                    <div key={i.text}>
-                      “{i.text}”{i.en && i.en.toLowerCase() !== i.text.toLowerCase() ? <b> · {i.en}</b> : null}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <small>{t("arabicSticker")}</small>
-                  <b className="missing">{t("missingFromSticker")}</b>
-                  <br />
-                  <span lang="ar" dir="rtl">غير موجود في الملصق العربي</span>
-                </div>
-              </div>
-            </section>
+        <section className="big-card">
+          <h2>{t("onLabelTitle")}</h2>
+          {onLabel.length === 0 ? (
+            <p className="small-note">{t("onLabelNone")}</p>
           ) : (
-            <section className="big-card">
-              <h3>{t("stickerMatchTitle")}</h3>
-              <p>{t("stickerMatch")}</p>
-            </section>
-          ))}
-
-        <section className="big-card">
-          <h2>{t("findingsTitle")}</h2>
-          {found.map((f) => (
-            <FindingRow key={f.key} f={f} />
-          ))}
-          {results
-            .filter((r) => r.reasons.some((x) => x.kind === "approved"))
-            .map((r) => (
-              <div className="activity" key={`ok-${r.member_id}`}>
-                <div>
-                  <h4>{describe(lang, r.reasons.find((x) => x.kind === "approved")!, memberName(r.member_id))}</h4>
-                  <p>{t("src_safe_list")} · {memberName(r.member_id)}</p>
-                </div>
-                <Pill level="green">{pillWord(lang, "green")}</Pill>
-              </div>
-            ))}
-          {greens.filter((r) => !r.reasons.some((x) => x.kind === "approved")).length > 0 && (
-            <div className="activity">
-              <div>
-                <h4>{t("allClearFor", { names: joinNames(lang, greens.filter((r) => !r.reasons.some((x) => x.kind === "approved")).map((r) => memberName(r.member_id))) })}</h4>
-                <p>{t("src_wiqaya")}</p>
-              </div>
-              <Pill level="green">{pillWord(lang, "green")}</Pill>
+            <div className="tiles">
+              {onLabel.map((n) => (
+                <span key={n.trigger} className={`tile ${avoided.has(n.trigger) ? "hit" : ""} ${n.kind}`} title={n.quote}>
+                  <span className="glyph" aria-hidden="true">{allergenGlyph(n.trigger)}</span>
+                  <b>{triggerName(lang, n.trigger)}</b>
+                  <small>{t(`kind_${n.kind}` as never)}</small>
+                  {n.quote && <span className="quote" dir="auto">“{n.quote}”</span>}
+                  {n.urls?.length ? (
+                    <span className="urls">
+                      {n.urls.map((u, i) => (
+                        <a key={u} href={u} target="_blank" rel="noreferrer noopener">
+                          [{i + 1}] {hostOf(u)}
+                        </a>
+                      ))}
+                    </span>
+                  ) : null}
+                </span>
+              ))}
             </div>
           )}
-          {researching && (
-            <p className="row small-note" role="status" style={{ marginTop: 12 }}>
-              <Spinner /> {t("researching", { n: unknowns.length })}
-            </p>
-          )}
-        </section>
+          {onLabel.some((n) => avoided.has(n.trigger)) && <p className="legend"><span className="dot-hit" /> {t("onLabelLegend")}</p>}
 
-        <section className="big-card">
-          <div className="row spread">
-            <h2 style={{ margin: 0 }}>{t("meansTitle")}</h2>
-            <button className="secondary" onClick={speak}>
-              <Icon name="sound" /> {t("readAloud")}
-            </button>
-          </div>
-          <p style={{ marginTop: 12 }}>{meaning(lang, results, state.members, null).join(" ")}</p>
-          <p lang={other} dir={other === "ar" ? "rtl" : "ltr"} style={{ marginTop: 12 }}>
-            {meaning(other, results, state.members, null).join(" ")}
-          </p>
-          {explained === null && !explaining && found.some((f) => f.reason.trigger && f.reason.quote) && (
-            <button className="text-button" onClick={explain} style={{ marginTop: 8 }}>
+          {unknowns.length > 0 && (
+            <div className="unknowns">
+              <h4>{t("unknownTitle")}</h4>
+              <div className="chips">
+                {unknowns.map((u) => (
+                  <span key={u} className="chip amber-chip" dir="auto">{u}</span>
+                ))}
+              </div>
+              {researching ? (
+                <p className="row small-note" role="status"><Spinner /> {t("researching", { n: unknowns.length })}</p>
+              ) : (
+                <p className="small-note">{t("unknownNote")}</p>
+              )}
+            </div>
+          )}
+
+          {explained === null && !explaining && onLabel.length > 0 && (
+            <button className="text-button" onClick={explain} style={{ marginTop: 12 }}>
               {t("explainBtn")} ↗
             </button>
           )}
@@ -298,8 +315,6 @@ export function Result({ id }: { id: string }) {
           )}
         </section>
 
-        <Ingredients facts={facts} />
-
         {reds.length > 0 && <div className="warning">{t("redRule")}</div>}
 
         {!isParent && ambers.length > 0 && !request && (
@@ -317,21 +332,63 @@ export function Result({ id }: { id: string }) {
             ))}
           </div>
         )}
+
+        <Ingredients facts={facts} open={false} />
+
         <div className="row">
-          {facts.off && !facts.sticker && !scan.thumb && (
+          <button className="primary" onClick={() => go({ name: "scan" }, true)}>
+            <Icon name="scan" /> {t("scanAnother")}
+          </button>
+          {(facts.off || facts.read_from_photo) && !facts.sticker && !scan.thumb && (
             <button className="secondary" onClick={() => go({ name: "scan", barcode: facts.barcode ?? undefined })}>
               <Icon name="camera" /> {t("addLabelPhoto")}
             </button>
           )}
-          <button className="secondary" onClick={() => go({ name: "scan" }, true)}>
-            <Icon name="scan" /> {t("scanAnother")}
-          </button>
         </div>
         <p className="center small-note">
           {t("checkNotGuarantee")} · <span lang={other}>{tr(other, "checkNotGuarantee")}</span>
         </p>
       </div>
     </>
+  );
+}
+
+/** One person's verdict: a big colour, a plain word, and the allergens that caused it. */
+function VerdictCard({ v, name, avatar, i }: { v: MemberVerdict; name: string; avatar?: string; i: number }) {
+  const { t, state } = useApp();
+  const lang = state.lang;
+  const why = v.reasons.filter((r) => r.level === v.level);
+  // one chip per allergen, for the strongest way the label names it
+  const rank = (k: string) => ((KINDS as readonly string[]).includes(k) ? KINDS.indexOf(k as Kind) : KINDS.length);
+  const strongest = new Map<TriggerId, Reason>();
+  for (const r of why) if (r.trigger && (!strongest.has(r.trigger) || rank(r.kind) < rank(strongest.get(r.trigger)!.kind))) strongest.set(r.trigger, r);
+  const triggers = [...strongest.values()];
+  const other = why.find((r) => !r.trigger);
+  const word = levelWord(lang, v.level);
+  return (
+    <div className={`verdict-card ${v.level}`}>
+      <div className="verdict-head">
+        <Avatar name={name} emoji={avatar} i={i} size={44} />
+        <div>
+          <div className="verdict-name">{name}</div>
+          <div className="verdict-word">
+            <span className="verdict-icon" aria-hidden="true">{v.level === "red" ? "✕" : v.level === "amber" ? "!" : "✓"}</span>
+            {word}
+          </div>
+        </div>
+      </div>
+      {triggers.length > 0 && (
+        <div className="verdict-chips">
+          {triggers.map((r) => (
+            <span key={r.trigger} className="verdict-chip">
+              <span aria-hidden="true">{allergenGlyph(r.trigger!)}</span> {triggerName(lang, r.trigger!)}
+              <small>{t(`kind_${r.kind}` as never)}</small>
+            </span>
+          ))}
+        </div>
+      )}
+      {(other || !triggers.length) && why[0] && <p className="verdict-why">{describe(lang, other ?? why[0], name)}</p>}
+    </div>
   );
 }
 
@@ -342,24 +399,16 @@ export function FindingRow({ f }: { f: Finding }) {
   return (
     <div className="activity finding">
       <div>
-        <h4>{describe(lang, r, joinNames(lang, f.levels.map((l) => l.name)))}</h4>
+        <h4>
+          {r.trigger && <span aria-hidden="true">{allergenGlyph(r.trigger)} </span>}
+          {describe(lang, r, joinNames(lang, f.levels.map((l) => l.name)))}
+        </h4>
         <p>
           <span className="src">
             {t((r.source === "gemma" && !r.urls?.length ? "src_gemma_unsourced" : `src_${r.source}`) as never)}
             {r.why ? ` · ${r.why}` : ""}
           </span>
-          {r.urls?.length ? (
-            <span className="urls">
-              {" · "}
-              {r.urls.map((u, i) => (
-                <a key={u} href={u} target="_blank" rel="noreferrer noopener">
-                  [{i + 1}] {hostOf(u)}
-                </a>
-              ))}
-            </span>
-          ) : null}
         </p>
-        <p className="matters">{t("findingMatters", { names: joinNames(lang, f.levels.map((l) => l.name)) })}</p>
       </div>
       <div className="pills">
         {f.levels.map((l) => (
@@ -387,10 +436,10 @@ export function Ingredients({ facts, open = true }: { facts: ProductFacts; open?
   const l = facts.label;
   if (!l || !l.ingredients.length) return null;
   // only what this family avoids is highlighted: red when certain, yellow when likely or unknown
-  const family = new Set<string>(state.members.flatMap((m) => [...m.avoid, ...m.diets]));
+  const family = new Set<string>(checked(state).flatMap((m) => [...m.avoid, ...m.diets]));
   const ours = (text: string | null | undefined, language: string | null) => findTerms(text, language).filter((m) => family.has(m.trigger));
   return (
-    <details className="big-card" open={open}>
+    <details className="big-card ingredients" open={open}>
       <summary>
         <h3 style={{ display: "inline" }}>{t("ingredientsTitle")} ({l.ingredients.length})</h3>
       </summary>

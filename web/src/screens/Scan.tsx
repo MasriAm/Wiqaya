@@ -3,47 +3,57 @@ import { verdicts } from "../engine/verdict.ts";
 import type { ProductFacts } from "../engine/types.ts";
 import { joinNames } from "../i18n.ts";
 import { api, ApiError } from "../lib/api.ts";
-import { capture, readFile, readFrame, startCamera, stopCamera, thumbnail } from "../lib/camera.ts";
+import { capture, readFile, readFrame, shrink, startCamera, stopCamera, thumbnail } from "../lib/camera.ts";
 import { newId } from "../lib/circle.ts";
-import type { ScanRecord } from "../lib/state.ts";
+import { checked, type ScanRecord } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
 import { Heading, Icon, Modal, Spinner } from "../ui.tsx";
 
 type Which = "original" | "sticker";
 type Step =
-  | { s: "barcode" }
-  | { s: "photo"; which: Which }
-  | { s: "preview"; which: Which; blob: Blob; url: string }
-  | { s: "sticker?" }
+  | { s: "live" }
+  | { s: "preview" }
   | { s: "checking"; stage: "lookup" | "read" | "compare" | "check" };
 
 interface Photo {
   blob: Blob;
+  url: string;
   hint: Which;
 }
 
-/** The scan flow: barcode first; if the product or its ingredients aren't known, photos of the label (and the
- * Arabic sticker); then the check, on this phone. */
+/** One viewfinder for everything: a barcode is read by itself while the camera runs; the shutter photographs the
+ * ingredients. After a photo: check it, or add the Arabic sticker's list first. */
 export function Scan({ barcode: known }: { barcode?: string }) {
   const { t, go, state, update, share, me, health } = useApp();
-  // a barcode passed in (from "Photograph the label too") starts at the label photo
-  const [step, setStep] = useState<Step>(known ? { s: "photo", which: "original" } : { s: "barcode" });
+  const [step, setStep] = useState<Step>({ s: "live" });
+  // a barcode passed in (from "Photograph the label too") skips the barcode reading
   const [barcode, setBarcode] = useState<string | null>(known ?? null);
-  const [skipped, setSkipped] = useState(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(known ? t("labelToo") : null);
   const [error, setError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState(false);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState("");
+  const [flash, setFlash] = useState(false);
+  // a real photo is read twice and its edges checked: past the first reading, say so, so a long wait doesn't look stuck
+  const [slow, setSlow] = useState(false);
+  const reading = step.s === "checking" && step.stage === "read";
+  useEffect(() => {
+    setSlow(false);
+    if (!reading) return;
+    const timer = setTimeout(() => setSlow(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [reading]);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
+  const members = checked(state);
 
-  const live = step.s === "barcode" || step.s === "photo";
+  const live = step.s === "live";
+  const next: Which = photos.some((p) => p.hint === "original") ? "sticker" : "original";
 
-  // the camera runs while a live step is showing
+  // the camera runs while the viewfinder shows
   useEffect(() => {
     if (!live || !video.current) return;
     let cancelled = false;
@@ -59,13 +69,13 @@ export function Scan({ barcode: known }: { barcode?: string }) {
       stopCamera(stream.current);
       stream.current = null;
     };
-  }, [live, step.s]);
+  }, [live]);
 
   // finish: compute the verdicts here, save, tell the family, show the result
   const finish = useCallback(
     async (facts: ProductFacts, thumbFrom: Blob | null) => {
       setStep({ s: "checking", stage: "check" });
-      const v = verdicts(facts, state.members, state.safe);
+      const v = verdicts(facts, members, state.safe);
       const rec: ScanRecord = {
         id: newId(),
         at: Date.now(),
@@ -78,29 +88,29 @@ export function Scan({ barcode: known }: { barcode?: string }) {
       share({ t: "scan", id: rec.id, by: me!, at: rec.at, name: facts.name, levels: Object.fromEntries(v.map((x) => [x.member_id, x.level])) });
       go({ name: "result", id: rec.id }, true);
     },
-    [state.members, state.safe, me, update, share, go],
+    [members, state.safe, me, update, share, go],
   );
 
   const readPhotos = useCallback(
-    async (list: Photo[], code: string | null) => {
-      if (busy.current) return;
+    async (list: Photo[]) => {
+      if (busy.current || !list.length) return;
       busy.current = true;
       setError(null);
       setStep({ s: "checking", stage: "read" });
       try {
         const stageTimer = list.length > 1 ? setTimeout(() => setStep({ s: "checking", stage: "compare" }), 25_000) : null;
-        const facts = await api.scan(list, code);
+        const facts = await api.scan(list, barcode);
         if (stageTimer) clearTimeout(stageTimer);
         await finish(facts, list[0].blob);
       } catch (e) {
         const c = (e as ApiError).message;
         setError(c === "gemma_unavailable" ? t("gemmaDown") : c === "offline" ? t("offline") : t("errorGeneric", { msg: c }));
-        setStep({ s: "sticker?" });
+        setStep({ s: "preview" });
       } finally {
         busy.current = false;
       }
     },
-    [finish, t],
+    [finish, t, barcode],
   );
 
   const lookUp = useCallback(
@@ -119,14 +129,14 @@ export function Scan({ barcode: known }: { barcode?: string }) {
         busy.current = false;
         setNote((e as ApiError).status === 404 ? t("notFound") : t("lookupFailed"));
       }
-      setStep({ s: "photo", which: "original" });
+      setStep({ s: "live" });
     },
     [finish, t],
   );
 
-  // live barcode reading
+  // a barcode is read by itself, until there is one or a photo is taken
   useEffect(() => {
-    if (step.s !== "barcode") return;
+    if (!live || barcode || photos.length) return;
     let stop = false;
     const loop = async () => {
       while (!stop) {
@@ -145,157 +155,124 @@ export function Scan({ barcode: known }: { barcode?: string }) {
     return () => {
       stop = true;
     };
-  }, [step.s, lookUp]);
+  }, [live, barcode, photos.length, lookUp]);
 
-  const takePhoto = async () => {
-    if (!video.current || step.s !== "photo" || !video.current.videoWidth) return;
-    const blob = await capture(video.current);
-    setStep({ s: "preview", which: step.which, blob, url: URL.createObjectURL(blob) });
+  const addPhoto = (blob: Blob) => {
+    setPhotos((list) => [...list.filter((p) => p.hint !== next), { blob, url: URL.createObjectURL(blob), hint: next }]);
+    setStep({ s: "preview" });
+  };
+
+  const shoot = async () => {
+    if (!video.current?.videoWidth) return;
+    setFlash(true);
+    setTimeout(() => setFlash(false), 180);
+    addPhoto(await capture(video.current));
   };
 
   const onFile = async (file: File | undefined) => {
     if (fileInput.current) fileInput.current.value = "";
     if (!file) return;
-    if (step.s === "barcode") {
-      // a photo chosen at the barcode step: try for a barcode, else treat it as the ingredient list
+    // a chosen photo: a barcode if it has one (and nothing else is taken yet), otherwise the ingredients
+    if (!barcode && !photos.length) {
       const code = await readFile(file).catch(() => null);
       if (code) return lookUp(code);
-      setSkipped(true);
-      setStep({ s: "preview", which: "original", blob: file, url: URL.createObjectURL(file) });
-      return;
     }
-    const which = step.s === "photo" || step.s === "preview" ? step.which : "original";
-    setStep({ s: "preview", which, blob: file, url: URL.createObjectURL(file) });
+    addPhoto(await shrink(file));
   };
 
-  const usePhoto = () => {
-    if (step.s !== "preview") return;
-    const list = [...photos.filter((p) => p.hint !== step.which), { blob: step.blob, hint: step.which }];
-    setPhotos(list);
-    URL.revokeObjectURL(step.url);
-    if (step.which === "sticker") readPhotos(list, barcode);
-    else setStep({ s: "sticker?" });
+  const retake = () => {
+    setPhotos((list) => {
+      const last = list.at(-1);
+      if (last) URL.revokeObjectURL(last.url);
+      return list.slice(0, -1);
+    });
+    setError(null);
+    setStep({ s: "live" });
   };
+
+  useEffect(() => () => photos.forEach((p) => URL.revokeObjectURL(p.url)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const gemmaReady = health?.gemma.available !== false;
-  const previews = useMemo(() => photos.map((p) => ({ hint: p.hint, url: URL.createObjectURL(p.blob) })), [photos]);
-  useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
-  const names = joinNames(state.lang, state.members.map((m) => m.name));
-  const hasOriginal = photos.some((p) => p.hint === "original");
-  const hasSticker = photos.some((p) => p.hint === "sticker");
-
-  // which tab is showing
-  const tab = step.s === "barcode" ? 0 : step.s === "photo" || step.s === "preview" ? (step.which === "original" ? 1 : 2) : 2;
+  const names = joinNames(state.lang, members.map((m) => m.name));
   const checking = step.s === "checking";
-  const shownPhoto = step.s === "preview" ? step.url : checking || step.s === "sticker?" ? previews.find((p) => p.hint === "original")?.url : undefined;
+  const shown = useMemo(() => photos.at(-1), [photos]);
+  const hint = next === "sticker" ? t("stickerHint") : barcode ? t("photoHint") : t("scanHintBoth");
 
   return (
     <>
-      <Heading eyebrow={t("scanEyebrow")} title={t("scanTitle")} lead={t("scanLead")} />
-      <div className="content stack">
+      <Heading eyebrow={t("scanEyebrow")} title={t("scanTitle")} lead={t("scanLeadOne")} />
+      <div className="content stack scan-screen">
         <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0] ?? undefined)} />
-        <div className="row spread">
-          <button className="secondary" onClick={() => go({ name: "home" }, true)}>
-            ✕ {t("close")}
-          </button>
-          <span className="exif-note">
-            <Icon name="lock" /> {t("exifNote")}
-          </span>
-        </div>
-
-        <div className="segmented" role="tablist">
-          {[t("tabBarcode"), t("tabOriginal"), t("tabSticker")].map((label, i) => (
-            <button
-              key={label}
-              role="tab"
-              aria-selected={tab === i}
-              className={tab === i ? "active" : ""}
-              disabled={checking || (i === 2 && !hasOriginal)}
-              onClick={() => setStep(i === 0 ? { s: "barcode" } : { s: "photo", which: i === 1 ? "original" : "sticker" })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         {cameraError && live ? (
           <div className="warning" role="alert">{t("scanNoCamera")}</div>
         ) : (
-          <div className={`camera ${checking ? "checking" : ""}`}>
-            {live && <video ref={video} playsInline muted aria-label={t(step.s === "barcode" ? "scanHint" : "photoHint")} />}
-            {shownPhoto && !live && <img src={shownPhoto} alt="" />}
-            <span className="camera-hint">
-              {step.s === "barcode" ? t("scanHint") : step.s === "photo" && step.which === "sticker" ? t("stickerHint") : t("photoHint")}
-            </span>
+          <div className={`camera viewfinder ${checking ? "checking" : ""} ${flash ? "flash" : ""}`}>
+            {live && <video ref={video} playsInline muted aria-label={hint} />}
+            {!live && shown && <img src={shown.url} alt="" />}
+            {live && <span className="camera-hint">{hint}</span>}
+            {photos.length > 0 && (
+              <div className="shots" aria-label={t("photosTaken")}>
+                {photos.map((p) => (
+                  <span key={p.url} className="shot">
+                    <img src={p.url} alt="" />
+                    <small>{t(p.hint === "original" ? "shotLabel" : "shotSticker")}</small>
+                  </span>
+                ))}
+              </div>
+            )}
             {checking && <div className="scanline" aria-hidden="true" />}
           </div>
         )}
 
-        {note && step.s === "photo" && step.which === "original" && <div className="warning" role="status">{note}</div>}
-        {!gemmaReady && step.s !== "barcode" && <div className="warning" role="alert">{t("gemmaDown")}</div>}
+        {note && live && <div className="warning" role="status">{note}</div>}
+        {!gemmaReady && <div className="warning" role="alert">{t("gemmaDown")}</div>}
         {error && <div className="danger-box" role="alert">{error}</div>}
 
-        <div className="steps" aria-hidden={checking}>
-          <div className={tab === 0 && !checking ? "current" : "done"}>
-            {barcode ? `✓ ${t("stepFound", { code: barcode })}` : skipped || tab > 0 ? `– ${t("stepSkipped")}` : `① ${t("tabBarcode")}`}
-          </div>
-          <div className={tab === 1 && !checking ? "current" : hasOriginal ? "done" : ""}>
-            {hasOriginal ? `✓ ${t("tabOriginal")}` : `② ${t("tabOriginal")}`}
-            {hasOriginal && <small>{t("stepDone")}</small>}
-          </div>
-          <div className={(tab === 2 || step.s === "sticker?") && !checking ? "current" : hasSticker ? "done" : ""}>
-            {hasSticker ? `✓ ${t("tabSticker")}` : `③ ${t("stepAdd")}`}
-          </div>
-        </div>
-
-        {step.s === "barcode" && (
-          <div className="row">
-            <button className="secondary" onClick={() => setTyping(true)}>
-              <Icon name="keyboard" /> {t("typeBarcode")}
-            </button>
-            <button className="secondary" onClick={() => fileInput.current?.click()}>
-              <Icon name="image" /> {t("uploadPhoto")}
-            </button>
-            <button className="primary" onClick={() => {
-              setSkipped(true);
-              setStep({ s: "photo", which: "original" });
-            }}>
-              <Icon name="camera" /> {t("noBarcode")}
-            </button>
-          </div>
-        )}
-
-        {step.s === "photo" && (
-          <div className="row">
-            <button className="primary" onClick={takePhoto} disabled={cameraError}>
-              <Icon name="camera" /> {t("takePhoto")}
-            </button>
-            <button className="secondary" onClick={() => fileInput.current?.click()}>
-              <Icon name="image" /> {t("uploadPhoto")}
-            </button>
-          </div>
+        {live && (
+          <>
+            <div className="shutter-row">
+              <button className="text-button" onClick={() => fileInput.current?.click()}>
+                <Icon name="image" /> {t("uploadPhoto")}
+              </button>
+              {/* no camera here: the shutter picks a photo instead */}
+              <button className="shutter" onClick={cameraError ? () => fileInput.current?.click() : shoot} aria-label={t(next === "sticker" ? "shootSticker" : "shootLabel")}>
+                <span />
+              </button>
+              {!barcode && !photos.length ? (
+                <button className="text-button" onClick={() => setTyping(true)}>
+                  <Icon name="keyboard" /> {t("typeBarcode")}
+                </button>
+              ) : photos.length ? (
+                <button className="text-button" onClick={() => setStep({ s: "preview" })}>
+                  {t("cancel")}
+                </button>
+              ) : (
+                <span />
+              )}
+            </div>
+            <p className="center small-note">
+              {barcode ? `✓ ${t("stepFound", { code: barcode })} · ` : ""}
+              {t(next === "sticker" ? "shootSticker" : "shootLabel")}
+            </p>
+          </>
         )}
 
         {step.s === "preview" && (
-          <div className="row">
-            <button className="secondary" onClick={() => setStep({ s: "photo", which: step.which })}>
-              {t("retake")}
+          <section className="big-card preview-actions">
+            <h3>{t(photos.length > 1 ? "previewBoth" : "previewOne")}</h3>
+            <p className="small-note">{t("previewCheckText")}</p>
+            <button className="primary wide" onClick={() => readPhotos(photos)} disabled={!gemmaReady}>
+              <Icon name="check" /> {t("checkNow")}
             </button>
-            <button className="primary" onClick={usePhoto}>
-              {t("usePhoto")} <Icon name="arrow" />
-            </button>
-          </div>
-        )}
-
-        {step.s === "sticker?" && (
-          <section className="big-card">
-            <h3>{t("stickerQuestion")}</h3>
-            <div className="row" style={{ marginTop: 16 }}>
-              <button className="secondary" onClick={() => setStep({ s: "photo", which: "sticker" })}>
-                <Icon name="camera" /> {t("stickerYes")}
-              </button>
-              <button className="primary" onClick={() => readPhotos(photos.filter((p) => p.hint === "original"), barcode)}>
-                {t("checkNow")} <Icon name="arrow" />
+            <div className="row" style={{ marginTop: 10 }}>
+              {next === "sticker" && photos.length === 1 && (
+                <button className="secondary" onClick={() => setStep({ s: "live" })}>
+                  <Icon name="plus" /> {t("addSticker")}
+                </button>
+              )}
+              <button className="secondary" onClick={retake}>
+                <Icon name="camera" /> {t("retake")}
               </button>
             </div>
           </section>
@@ -306,7 +283,7 @@ export function Scan({ barcode: known }: { barcode?: string }) {
             <h2>{t("checking")}</h2>
             <ol className="progress">
               {barcode && <StepLine state={step.stage === "lookup" ? "active" : "done"} text={t("stepLookup")} />}
-              {step.stage !== "lookup" && photos.length > 0 && <StepLine state={step.stage === "read" ? "active" : "done"} text={t("stepRead")} />}
+              {step.stage !== "lookup" && photos.length > 0 && <StepLine state={step.stage === "read" ? "active" : "done"} text={t(slow ? "stepDoubleCheck" : "stepRead")} />}
               {photos.length > 1 && step.stage !== "lookup" && (
                 <StepLine state={step.stage === "compare" ? "active" : step.stage === "check" ? "done" : "todo"} text={t("stepCompare")} />
               )}
@@ -315,6 +292,15 @@ export function Scan({ barcode: known }: { barcode?: string }) {
             {step.stage !== "lookup" && <p className="small-note">{t("slowNote")}</p>}
           </section>
         )}
+
+        <div className="row spread">
+          <button className="secondary" onClick={() => go({ name: "home" }, true)}>
+            ✕ {t("close")}
+          </button>
+          <span className="exif-note">
+            <Icon name="lock" /> {t("exifNote")}
+          </span>
+        </div>
       </div>
 
       {typing && (

@@ -4,7 +4,7 @@ import { triggerName } from "../i18n.ts";
 import { api } from "../lib/api.ts";
 import type { Profile } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
-import { Avatar, Icon, Spinner } from "../ui.tsx";
+import { allergenGlyph, Avatar, Icon, Spinner } from "../ui.tsx";
 
 export const ALLERGENS: AllergenId[] = ["peanuts", "milk", "eggs", "sesame", "gluten", "pine_nuts", "tree_nuts", "soy", "fish", "crustaceans", "molluscs", "celery", "mustard", "lupin", "sulphites"];
 export const DIETS: DietId[] = ["halal", "vegetarian"];
@@ -12,10 +12,7 @@ const FACES = ["", "👧🏻", "👦🏻", "👶🏻", "👧🏽", "👦🏽", "
 
 /** Name, picture, allergies, diets and conditions, the "may contain" policy and (optionally) the emergency details. */
 export function ProfileEditor({ value, onChange, emergency = false }: { value: Profile; onChange: (p: Profile) => void; emergency?: boolean }) {
-  const { t, state } = useApp();
-  const lang = state.lang;
-  const other = lang === "ar" ? "en" : "ar";
-  const toggle = <T extends string>(list: T[], id: T) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  const { t } = useApp();
   const em = value.emergency;
   const setEm = (patch: Partial<Profile["emergency"]>) => onChange({ ...value, emergency: { ...em, ...patch } });
   const [reading, setReading] = useState<"idle" | "busy" | string>("idle");
@@ -47,29 +44,7 @@ export function ProfileEditor({ value, onChange, emergency = false }: { value: P
         ))}
       </div>
 
-      <div className="field" id="p-avoid">{t("avoids")}</div>
-      <div className="allergen-grid" role="group" aria-labelledby="p-avoid">
-        {ALLERGENS.map((a) => (
-          <button key={a} type="button" className={`select-chip ${value.avoid.includes(a) ? "selected" : ""}`} aria-pressed={value.avoid.includes(a)} onClick={() => onChange({ ...value, avoid: toggle(value.avoid, a) })}>
-            {triggerName(lang, a)}
-            <small aria-hidden="true" lang={other}>{triggerName(other, a)}</small>
-          </button>
-        ))}
-      </div>
-
-      <div className="field" id="p-diet">{t("conditions")}</div>
-      <div className="row" role="group" aria-labelledby="p-diet">
-        <label className="check">
-          <input type="checkbox" checked={!!value.celiac} onChange={(e) => onChange({ ...value, celiac: e.target.checked, avoid: e.target.checked && !value.avoid.includes("gluten") ? [...value.avoid, "gluten"] : value.avoid })} />
-          {t("celiac")}
-        </label>
-        {DIETS.map((d) => (
-          <label key={d} className="check">
-            <input type="checkbox" checked={value.diets.includes(d)} onChange={() => onChange({ ...value, diets: toggle(value.diets, d) })} />
-            {triggerName(lang, d)}
-          </label>
-        ))}
-      </div>
+      <AllergyPicker value={value} onChange={onChange} />
 
       <div className="field" id="p-traces">{t("traces")}</div>
       <div className="segmented" role="group" aria-labelledby="p-traces">
@@ -121,8 +96,45 @@ export function ProfileEditor({ value, onChange, emergency = false }: { value: P
   );
 }
 
+/** The allergens to avoid, as big picture buttons, and the diets and conditions. */
+export function AllergyPicker({ value, onChange }: { value: Profile; onChange: (p: Profile) => void }) {
+  const { t, state } = useApp();
+  const lang = state.lang;
+  const other = lang === "ar" ? "en" : "ar";
+  const toggle = <T extends string>(list: T[], id: T) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  return (
+    <>
+      <div className="field" id="p-avoid">{t("avoids")}</div>
+      <div className="allergen-grid" role="group" aria-labelledby="p-avoid">
+        {ALLERGENS.map((a) => (
+          <button key={a} type="button" className={`select-chip ${value.avoid.includes(a) ? "selected" : ""}`} aria-pressed={value.avoid.includes(a)} onClick={() => onChange({ ...value, avoid: toggle(value.avoid, a) })}>
+            <span className="chip-glyph" aria-hidden="true">{allergenGlyph(a)}</span>
+            {triggerName(lang, a)}
+            <small aria-hidden="true" lang={other}>{triggerName(other, a)}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="field" id="p-diet">{t("conditions")}</div>
+      <div className="row" role="group" aria-labelledby="p-diet">
+        <label className="check">
+          <input type="checkbox" checked={!!value.celiac} onChange={(e) => onChange({ ...value, celiac: e.target.checked, avoid: e.target.checked && !value.avoid.includes("gluten") ? [...value.avoid, "gluten"] : value.avoid })} />
+          {t("celiac")}
+        </label>
+        {DIETS.map((d) => (
+          <label key={d} className="check">
+            <input type="checkbox" checked={value.diets.includes(d)} onChange={() => onChange({ ...value, diets: toggle(value.diets, d) })} />
+            {triggerName(lang, d)}
+          </label>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** A name is enough: a child can choose their allergies on their own phone (until then nothing is green for them). */
 export function validProfile(p: Profile): boolean {
-  return !!p.name.trim() && p.avoid.length + p.diets.length > 0;
+  return !!p.name.trim();
 }
 
 /** Allergens as rose chips, diets and conditions as lilac ones. */
