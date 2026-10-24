@@ -1,6 +1,7 @@
 // Calls to Wiqaya's server. Nothing here carries a name, an allergy profile or a location.
 import type { MenuFacts } from "../engine/menu.ts";
 import type { ProductFacts, Suspicion, TriggerId } from "../engine/types.ts";
+import { shrink } from "./camera.ts";
 
 export class ApiError extends Error {
   status: number;
@@ -41,15 +42,18 @@ export const api = {
     return call<ProductFacts & { seconds: number }>("/api/scan", { method: "POST", body: fd });
   },
   /** A restaurant menu: a link, or photos / a PDF. Only the menu is sent. */
-  menu: (url: string, files: File[]) => {
+  menu: async (url: string, files: File[]) => {
     const fd = new FormData();
     if (url) fd.append("url", url);
-    files.forEach((f) => fd.append("files", f, f.name));
+    for (const f of files) {
+      const small = await shrink(f);
+      fd.append("files", small, small === f ? f.name : f.name.replace(/\.\w+$/, "") + ".jpg");
+    }
     return call<MenuFacts & { seconds: number }>("/api/menu", { method: "POST", body: fd });
   },
-  expiry: (photo: Blob) => {
+  expiry: async (photo: Blob) => {
     const fd = new FormData();
-    fd.append("photo", photo, "box.jpg");
+    fd.append("photo", await shrink(photo), "box.jpg");
     return call<{ expiry: string | null; printed: string | null }>("/api/expiry", { method: "POST", body: fd });
   },
   research: (ingredients: string[], product_name: string | null) =>

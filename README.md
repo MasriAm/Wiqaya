@@ -111,6 +111,9 @@ Settings (environment variables): `WIQAYA_MODEL`, `WIQAYA_OLLAMA_URL`, `WIQAYA_D
 `WIQAYA_WEB_SEARCH=0` to turn web search off. If the configured model isn't pulled, Wiqaya uses another
 installed Gemma 4 (the E4B size first) and shows which one in the app's footer.
 
+A photo's second reading and its edge check are sent to Gemma together. Start Ollama with
+`OLLAMA_NUM_PARALLEL=2 ollama serve` so it answers both at once; with one slot they wait in turn.
+
 ## Tests and benchmark
 
 ```bash

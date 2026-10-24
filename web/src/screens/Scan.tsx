@@ -3,7 +3,7 @@ import { verdicts } from "../engine/verdict.ts";
 import type { ProductFacts } from "../engine/types.ts";
 import { joinNames } from "../i18n.ts";
 import { api, ApiError } from "../lib/api.ts";
-import { capture, readFile, readFrame, startCamera, stopCamera, thumbnail } from "../lib/camera.ts";
+import { capture, readFile, readFrame, shrink, startCamera, stopCamera, thumbnail } from "../lib/camera.ts";
 import { newId } from "../lib/circle.ts";
 import { checked, type ScanRecord } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
@@ -35,6 +35,15 @@ export function Scan({ barcode: known }: { barcode?: string }) {
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState("");
   const [flash, setFlash] = useState(false);
+  // a real photo is read twice and its edges checked: past the first reading, say so, so a long wait doesn't look stuck
+  const [slow, setSlow] = useState(false);
+  const reading = step.s === "checking" && step.stage === "read";
+  useEffect(() => {
+    setSlow(false);
+    if (!reading) return;
+    const timer = setTimeout(() => setSlow(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [reading]);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -168,7 +177,7 @@ export function Scan({ barcode: known }: { barcode?: string }) {
       const code = await readFile(file).catch(() => null);
       if (code) return lookUp(code);
     }
-    addPhoto(file);
+    addPhoto(await shrink(file));
   };
 
   const retake = () => {
@@ -274,7 +283,7 @@ export function Scan({ barcode: known }: { barcode?: string }) {
             <h2>{t("checking")}</h2>
             <ol className="progress">
               {barcode && <StepLine state={step.stage === "lookup" ? "active" : "done"} text={t("stepLookup")} />}
-              {step.stage !== "lookup" && photos.length > 0 && <StepLine state={step.stage === "read" ? "active" : "done"} text={t("stepRead")} />}
+              {step.stage !== "lookup" && photos.length > 0 && <StepLine state={step.stage === "read" ? "active" : "done"} text={t(slow ? "stepDoubleCheck" : "stepRead")} />}
               {photos.length > 1 && step.stage !== "lookup" && (
                 <StepLine state={step.stage === "compare" ? "active" : step.stage === "check" ? "done" : "todo"} text={t("stepCompare")} />
               )}

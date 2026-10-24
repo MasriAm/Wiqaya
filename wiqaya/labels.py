@@ -15,6 +15,7 @@ import io
 import json
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from wiqaya import off
@@ -223,18 +224,23 @@ def read(gemma: Gemma, image_b64: str, hint: str = "") -> tuple[dict, dict]:
     for lab in labels:
         if len(lab["ingredients"]) < 3 and not lab["contains"]:
             lab["complete"] = False
-    if any(lab["complete"] and lab["legible"] for lab in labels):
+    # the second reading only lowers "legible" and the edge check only lowers "complete", so they run side by side
+    def second_reading() -> list[dict]:
         try:
             again, _ = gemma.json(READ_SYSTEM, user, READ_SCHEMA, images=[_variant(image_b64)], num_predict=3072)
-            second = [_label(lab) for lab in again.get("labels") or []]
         except GemmaError:
-            second = []
-        if agree(labels, second) < AGREE:
+            return []
+        return [_label(lab) for lab in again.get("labels") or []]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        second = pool.submit(second_reading) if any(lab["complete"] and lab["legible"] for lab in labels) else None
+        edge = pool.submit(cut_off, gemma, image_b64, labels) if any(lab["complete"] for lab in labels) else None
+        if second and agree(labels, second.result()) < AGREE:
             for lab in labels:
                 lab["legible"] = False
-    if any(lab["complete"] for lab in labels) and cut_off(gemma, image_b64, labels):
-        for lab in labels:
-            lab["complete"] = False
+        if edge and edge.result():
+            for lab in labels:
+                lab["complete"] = False
     return {"product_name": (answer.get("product_name") or "").strip() or None,
             "brand": (answer.get("brand") or "").strip() or None, "labels": labels}, stats
 

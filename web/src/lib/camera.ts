@@ -73,6 +73,26 @@ export async function capture(video: HTMLVideoElement): Promise<Blob> {
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("capture"))), "image/jpeg", 0.92));
 }
 
+/** A photo chosen from the phone, made the size of a camera shot: phones save 12-48 MP photos that can be larger than
+ * the server takes, and Gemma reads no more from them. Anything that isn't an image the browser can open is sent as it is. */
+export async function shrink(file: Blob, max = 2560): Promise<Blob> {
+  if (!file.type.startsWith("image/")) return file;
+  let bmp: ImageBitmap;
+  try {
+    bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return file;
+  }
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && file.type === "image/jpeg" && file.size < 4 * 1024 * 1024) return file;
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * scale);
+  c.height = Math.round(bmp.height * scale);
+  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return new Promise((resolve) => c.toBlob((b) => resolve(b ?? file), "image/jpeg", 0.9));
+}
+
 /** A small preview (data URL) of a photo, kept on the phone. */
 export async function thumbnail(blob: Blob, max = 360): Promise<string> {
   const bmp = await createImageBitmap(blob);
