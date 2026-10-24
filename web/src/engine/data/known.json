@@ -233,7 +233,12 @@
    "natural flavoring",
    "natural flavorings",
    "natural flavours",
-   "natural flavors"
+   "natural flavors",
+   "leavening agent",
+   "leavening agents",
+   "acidifier",
+   "acidulant",
+   "glazing agent"
   ],
   "ar": [
    "ماء",
@@ -412,7 +417,10 @@
    "نكهات",
    "مواد منكهة",
    "منكهات طبيعية",
-   "نكهات طبيعية"
+   "نكهات طبيعية",
+   "مادة رافعة",
+   "عامل رافع",
+   "منظم الحموضة"
   ],
   "it": [
    "acqua",
@@ -483,7 +491,10 @@
    "lecitina di girasole",
    "caramello",
    "vitamine",
-   "carbonato di calcio"
+   "carbonato di calcio",
+   "agente lievitante",
+   "lievitante",
+   "acidificante"
   ],
   "fr": [
    "eau",
@@ -554,7 +565,10 @@
    "lécithine de tournesol",
    "caramel",
    "vitamines",
-   "carbonate de calcium"
+   "carbonate de calcium",
+   "agent levant",
+   "agents levants",
+   "acidifiant"
   ],
   "es": [
    "agua",
@@ -624,7 +638,9 @@
    "lecitina de girasol",
    "caramelo",
    "vitaminas",
-   "carbonato cálcico"
+   "carbonato cálcico",
+   "gasificante",
+   "acidulante"
   ],
   "de": [
    "wasser",
@@ -698,7 +714,9 @@
    "sonnenblumenlecithin",
    "karamell",
    "vitamine",
-   "calciumcarbonat"
+   "calciumcarbonat",
+   "säuerungsmittel",
+   "backpulver"
   ],
   "tr": [
    "su",
@@ -765,7 +783,8 @@
    "ayçiçek lesitini",
    "karamel",
    "vitaminler",
-   "kalsiyum karbonat"
+   "kalsiyum karbonat",
+   "kabartma tozu"
   ]
  },
  "e_numbers": [

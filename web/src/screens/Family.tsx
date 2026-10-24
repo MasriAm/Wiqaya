@@ -128,7 +128,11 @@ export function MemberEdit({ id }: { id: string }) {
       <main className="page">
         <ProfileEditor value={p} onChange={setP} emergency />
         {!valid && <p className="muted small">{t("noAllergiesYet")}</p>}
-        <button className="btn primary block" disabled={!valid} onClick={() => publish([...state.members.filter((m) => m.id !== p.id), { ...p, name: p.name.trim() }])}>
+        <button className="btn primary block" disabled={!valid} onClick={() => {
+          const edited = { ...p, name: p.name.trim() };
+          // keep the family's order: replace in place, or add at the end
+          publish(existing ? state.members.map((m) => (m.id === p.id ? edited : m)) : [...state.members, edited]);
+        }}>
           {t("save")}
         </button>
         {existing && (
@@ -189,7 +193,9 @@ const ENTRIES = [...allergens.allergens, ...allergens.diets] as Entry[];
 function hiddenNames(id: string, lang: "en" | "ar"): string[] {
   const base = ENTRIES.find((e) => e.id === id)?.terms[lang] ?? [];
   const pack = jordan.entries.filter((e) => e.allergen === id && e.lang === lang).map((e) => e.term);
-  return [...new Set([...base, ...pack].filter((x) => !x.startsWith("~")).map((x) => x.replace(/\*$/, "")))].slice(0, 14);
+  const names = [...new Set([...base, ...pack].filter((x) => !x.startsWith("~")).map((x) => x.replace(/\*$/, "")))];
+  // "peanut" and "peanuts": keep one
+  return names.filter((x) => !(x.endsWith("s") && names.includes(x.slice(0, -1)))).slice(0, 14);
 }
 
 export function CookCard({ id }: { id: string }) {

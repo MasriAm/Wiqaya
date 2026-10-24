@@ -145,6 +145,23 @@ def main() -> None:
         check("emergency: call 911, Sara's card, last scanned product", emergency)
         shot(p, out, "11-emergency")
 
+        def profile_and_cook_card():
+            p.goto(a.url)
+            p.get_by_role("button", name="Family").click()
+            p.get_by_role("button", name="Edit").first.click()
+            p.get_by_label("Action plan from the doctor").fill("If wheezing or lip swelling: epinephrine pen in the outer thigh, then call 911.")
+            p.get_by_label("Medicines").fill("Epinephrine pen 0.15 mg")
+            p.get_by_role("button", name="Add a contact").click()
+            p.get_by_placeholder("Name").last.fill("Mum")
+            p.get_by_placeholder("Phone").last.fill("+962 79 000 0000")
+            shot(p, out, "13-profile-edit")
+            p.get_by_role("button", name="Save").click()
+            p.get_by_role("button", name="Card for the cook: Sara").click()
+            expect(p.get_by_text("Sara must not eat:")).to_be_visible()
+            expect(p.get_by_text("ممنوع على Sara:")).to_be_visible()
+        check("profile: doctor's plan saved; card for the cook", profile_and_cook_card)
+        shot(p, out, "14-cook-card")
+
         def arabic():
             p.goto(a.url)
             p.get_by_role("button", name="Settings").click()
@@ -153,6 +170,13 @@ def main() -> None:
             p.go_back()
         check("Arabic: the app switches to right-to-left", arabic)
         shot(p, out, "12-home-ar")
+
+        def arabic_result():
+            # the parent's own scan (scans by others show in the feed but carry only their result)
+            p.locator("button.item:not([disabled])", has_text="Nutella").first.click()
+            expect(p.get_by_role("heading", name="غير مناسب لـ Sara")).to_be_visible()
+        check("Arabic: a result reads right to left", arabic_result)
+        shot(p, out, "15-result-ar")
 
         print("page errors:", errors)
         b.close()

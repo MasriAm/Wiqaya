@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { verdicts } from "../engine/verdict.ts";
 import type { ProductFacts } from "../engine/types.ts";
 import { api, ApiError } from "../lib/api.ts";
@@ -173,6 +173,8 @@ export function Scan({ barcode: known }: { barcode?: string }) {
   };
 
   const gemmaReady = health?.gemma.available !== false;
+  const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p.blob)), [photos]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
   const names = state.members.map((m) => m.name).join(state.lang === "ar" ? "، " : ", ");
 
   return (
@@ -248,8 +250,8 @@ export function Scan({ barcode: known }: { barcode?: string }) {
           <>
             {error && <p className="card request" role="alert">{error}</p>}
             <div className="thumbs">
-              {photos.map((p, i) => (
-                <img key={i} src={URL.createObjectURL(p.blob)} alt="" />
+              {previews.map((u) => (
+                <img key={u} src={u} alt="" />
               ))}
             </div>
             <h2 className="big">{t("stickerQuestion")}</h2>

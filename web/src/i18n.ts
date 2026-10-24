@@ -479,7 +479,8 @@ export function reasonKey(kind: ReasonKind): Key {
 
 /** One reason as a sentence: what the label (or the database, or Gemma) says, with the words quoted. */
 export function describe(lang: Lang, r: Reason, name: string): string {
-  const vars = { quote: r.quote ? `“${r.quote}”` : "", allergen: r.trigger ? triggerName(lang, r.trigger) : "", by: r.approved_by ?? "", name };
+  const q = (x: string) => (lang === "ar" ? `«${x}»` : `“${x}”`);
+  const vars = { quote: r.quote ? q(r.quote) : "", allergen: r.trigger ? triggerName(lang, r.trigger) : "", by: r.approved_by ?? "", name };
   if (r.source === "open_food_facts") return t(lang, r.kind === "contains" ? "reason_off_contains" : "reason_off_may", vars);
   return t(lang, reasonKey(r.kind), vars);
 }

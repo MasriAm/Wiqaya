@@ -32,7 +32,12 @@ export function Result({ id }: { id: string }) {
   const lang = state.lang;
 
   const facts = scan?.facts;
-  const results = useMemo(() => (facts ? verdicts(facts, state.members, state.safe) : []), [facts, state.members, state.safe]);
+  // most serious first
+  const order = { red: 0, amber: 1, green: 2 } as const;
+  const results = useMemo(
+    () => (facts ? verdicts(facts, state.members, state.safe).sort((a, b) => order[a.level] - order[b.level]) : []),
+    [facts, state.members, state.safe],
+  );
 
   // ingredients no list knows: Gemma looks them up (with web search and Open Food Facts) in the background
   const unknowns = useMemo(() => {

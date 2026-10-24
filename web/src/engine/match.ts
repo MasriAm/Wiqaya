@@ -130,12 +130,26 @@ export function understood(text: string, en: string | null | undefined, language
       if (!n) return true;
       if (KNOWN.has(n) || KNOWN_E.has(n)) return true;
       if (/^e\d{3,4}[a-f]?$/.test(n)) return KNOWN_E.has(n);
-      // "emulsifier e322": a known class name followed by codes or names checked separately
-      const words = n.split(" ");
-      if (words.every((w) => KNOWN.has(w) || KNOWN_E.has(w))) return true;
+      // made up entirely of known phrases: "agente lievitante bicarbonato di sodio" (a lost colon)
+      if (covered(n)) return true;
       return findTerms(p, lang).length > 0;
     });
   return ok(text, language) || (!!en && ok(en, "en"));
+}
+
+/** Can the text be split into phrases that are all on the known list (or known E-numbers)? */
+function covered(n: string): boolean {
+  const w = n.split(" ");
+  const ok = new Array<boolean>(w.length + 1).fill(false);
+  ok[0] = true;
+  for (let i = 0; i < w.length; i++) {
+    if (!ok[i]) continue;
+    for (let j = i + 1; j <= Math.min(w.length, i + 6); j++) {
+      const phrase = w.slice(i, j).join(" ");
+      if (KNOWN.has(phrase) || KNOWN_E.has(phrase)) ok[j] = true;
+    }
+  }
+  return ok[w.length];
 }
 
 export function isKnownENumber(code: string): boolean {
