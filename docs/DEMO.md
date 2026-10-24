@@ -37,13 +37,12 @@ browser):
    ingredient (or a "may contain" line) that the Arabic sticker leaves out. Gemma read; the phone decided.
 6. **Safe list (10 s).** Safe list: Philadelphia, approved by Mum for Omar, tied to the exact recipe. If the
    ingredients change, it shows a recipe change alert and stops counting as approved.
-7. **Eating out (25 s).** "Where can we take the kids tonight?" Eating out → paste a restaurant's menu link (or a
-   photo of the menu). In about ten seconds: *12 good to ask for · 6 ask the staff first · 9 avoid*. Tabbouleh is
+7. **Eating out (25 s).** "Where can we take the kids tonight?" Eating out → take a photo of the
+   restaurant's menu. In about ten seconds: *12 good to ask for · 6 ask the staff first · 9 avoid*. Tabbouleh is
    under Avoid for Omar (the menu says bulgur), knafeh too (wheat pastry); hummus is fine for both. Tap Sara to see
    only Sara's view. Nothing is ever "safe" on a menu, so it ends with *Show the cook card*. Gemma saw the menu only.
-8. **Cook card and child mode (10 s).** Cook card: Sara's allergies with every hidden name, in Arabic and English,
-   with *Read to the cook*. Child mode: a face and a voice that tell Sara, in Arabic and English, what a grown-up found on
-   the last snack's label.
+8. **Cook card and child mode (10 s).** Cook card: Sara's allergies with every hidden name, in Arabic and English.
+   Child mode: a face that tells Sara, in Arabic and English, what a grown-up found on the last snack's label.
 9. **Emergency (20 s).** Tap **Emergency** → Sara: *Call 911 now* (use a teammate's number on stage), the doctor's
    plan word for word, *Show to paramedics* in Arabic or English, and the text to the family: "Sara may be having
    an allergic reaction. Last scanned: Nutella (not suitable) at 4:12 pm. Location: …". Wiqaya doesn't decide

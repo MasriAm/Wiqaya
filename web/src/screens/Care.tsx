@@ -217,15 +217,6 @@ function CookCard({ members }: { members: Profile[] }) {
   const triggers = [...new Set(members.flatMap((m) => [...m.avoid, ...m.diets]))] as TriggerId[];
   const names = joinNames(state.lang, members.map((m) => m.name));
   const line = (lang: Lang, id: TriggerId) => [triggerName(lang, id), ...hiddenNames(id, lang)].join(" · ");
-  const read = () => {
-    speechSynthesis.cancel();
-    for (const lang of ["ar", "en"] as Lang[]) {
-      const text = `${tr(lang, "cookLead", { names })} ${triggers.map((x) => line(lang, x)).join(". ")}.`;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = lang === "ar" ? "ar-JO" : "en-GB";
-      speechSynthesis.speak(u);
-    }
-  };
   return (
     <section className="big-card cook-card">
       <div className="eyebrow">{t("cookEyebrow")}</div>
@@ -242,9 +233,6 @@ function CookCard({ members }: { members: Profile[] }) {
       </div>
       <p lang="ar" dir="rtl">يُرجى التحقق من كل المكونات والصلصات والزيوت، وتجنّب التلامس مع مسببات الحساسية. شكرًا.</p>
       <p lang="en" dir="ltr">Please check every ingredient, sauce and oil, and avoid cross-contact. Thank you.</p>
-      <button className="primary wide" style={{ marginTop: 20 }} onClick={read}>
-        <Icon name="sound" /> {t("readToCook")}
-      </button>
     </section>
   );
 }
@@ -273,12 +261,6 @@ function ChildMode({ member }: { member: Profile }) {
     );
   }
   const level = recent.level;
-  const say = () => {
-    const u = new SpeechSynthesisUtterance(`${CHILD[level][lang]} ${recent.name ?? ""}`);
-    u.lang = lang === "ar" ? "ar-JO" : "en-GB";
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  };
   return (
     <section className={`big-card child ${level}`}>
       <div className="child-face" aria-hidden="true">{FACES[level]}</div>
@@ -286,9 +268,6 @@ function ChildMode({ member }: { member: Profile }) {
       <p lang={other} dir={other === "ar" ? "rtl" : "ltr"}>{CHILD[level][other]}</p>
       <p>{t("childAbout", { product: recent.name ?? t("unnamedProduct"), ago: ago(lang, recent.at) })}</p>
       <div className="row center-row">
-        <button className={level === "red" ? "danger-btn" : "primary"} onClick={say}>
-          <Icon name="sound" /> {t("childListen")}
-        </button>
         {recent.id && (
           <button className="secondary" onClick={() => go({ name: "result", id: recent.id! })}>
             {levelWord(lang, level)} ↗

@@ -18,25 +18,21 @@ export function Menu({ id }: { id?: string }) {
 
 function MenuInput() {
   const { t, go, state, update, health } = useApp();
-  const [url, setUrl] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
   const people = checked(state);
-  const link = url.trim();
-  const valid = /^https?:\/\/\S+\.\S+/i.test(link) || (!!link && !link.includes(" ") && link.includes("."));
-  const ready = (valid || files.length > 0) && !busy;
+  const ready = files.length > 0 && !busy;
   const gemmaReady = health?.gemma.available !== false;
 
   const run = async () => {
     if (!ready) return;
     setBusy(true);
     setError(null);
-    const full = link && !/^https?:\/\//i.test(link) ? `https://${link}` : link;
     try {
-      const facts = await api.menu(full, files);
-      const rec: MenuRecord = { id: newId(), at: Date.now(), source: full ? hostOf(full) : files.map((f) => f.name).join(", "), facts };
+      const facts = await api.menu("", files);
+      const rec: MenuRecord = { id: newId(), at: Date.now(), source: files.map((f) => f.name).join(", "), facts };
       update((s) => ({ ...s, menus: [rec, ...s.menus.filter((m) => m.source !== rec.source)] }));
       go({ name: "menu", id: rec.id }, true);
     } catch (e) {
@@ -52,25 +48,18 @@ function MenuInput() {
       <Heading eyebrow={t("menuEyebrow")} title={t("menuTitle")} lead={t("menuLead")} />
       <div className="content stack menu-screen">
         <section className="big-card menu-input">
-          <label className="field first" htmlFor="menu-url">{t("menuLinkLabel")}</label>
-          <div className="url-row">
-            <span className="url-icon" aria-hidden="true"><Icon name="globe" /></span>
-            <input id="menu-url" type="url" inputMode="url" dir="ltr" autoComplete="off" placeholder="https://…/menu" value={url} disabled={busy}
-              onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} />
-          </div>
-          <div className="or"><span>{t("menuOr")}</span></div>
-          <input ref={picker} type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => {
+          <input ref={picker} type="file" accept="image/*" multiple hidden onChange={(e) => {
             setFiles([...(e.target.files ?? [])].slice(0, 4));
             if (picker.current) picker.current.value = "";
           }} />
           <button className="secondary wide" disabled={busy} onClick={() => picker.current?.click()}>
-            <Icon name="image" /> {t("menuAddFiles")}
+            <Icon name="camera" /> {t("menuAddFiles")}
           </button>
           {files.length > 0 && (
             <div className="chips" style={{ marginTop: 10 }}>
               {files.map((f) => (
                 <span key={f.name} className="chip file-chip">
-                  {f.type === "application/pdf" ? "📄" : "🖼️"} {f.name}
+                  🖼️ {f.name}
                   <button className="chip-x" aria-label={t("remove")} onClick={() => setFiles(files.filter((x) => x !== f))}>×</button>
                 </span>
               ))}
@@ -234,12 +223,4 @@ function DishCard({ dish, verdicts, names, showWho }: { dish: Dish; verdicts: Re
       )}
     </article>
   );
-}
-
-function hostOf(u: string): string {
-  try {
-    return new URL(u).hostname.replace(/^www\./, "");
-  } catch {
-    return u;
-  }
 }
