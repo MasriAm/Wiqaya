@@ -2,13 +2,13 @@ import { useState } from "react";
 import allergens from "../engine/data/allergens.json" with { type: "json" };
 import jordan from "../engine/data/jordan.json" with { type: "json" };
 import type { Level, TriggerId } from "../engine/types.ts";
-import { ago, joinNames, levelWord, shortDate, t as tr, triggerName } from "../i18n.ts";
+import { joinNames, levelWord, shortDate, t as tr, triggerName } from "../i18n.ts";
 import { checked, type Lang, type Profile } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
 import { Avatar, Heading, Icon } from "../ui.tsx";
 import { penReminders } from "./Home.tsx";
 
-export type CareTab = "emergency" | "cook" | "child";
+export type CareTab = "emergency" | "cook";
 
 /** Emergency mode, the card for the cook and child mode: one place for when it matters. Everything here is
  * composed on this phone. Wiqaya never decides whether a reaction is happening and never gives treatment advice. */
@@ -16,12 +16,11 @@ export function Care({ tab, id }: { tab: CareTab; id?: string }) {
   const { t, go, state } = useApp();
   const members = checked(state);
   // the cook card can cover everyone; the other tabs are about one person
-  const chosen = id === "*" ? undefined : members.find((m) => m.id === id) ?? (members.length === 1 || tab === "child" ? members[0] : undefined);
+  const chosen = id === "*" ? undefined : members.find((m) => m.id === id) ?? (members.length === 1 ? members[0] : undefined);
   const lead = chosen ? t("careLead", { name: chosen.name }) : t("careLeadAll");
   const tabs: [CareTab, string, string][] = [
     ["emergency", "🚨", t("tabEmergency")],
     ["cook", "🍽", t("tabCook")],
-    ["child", "☺", t("tabChild")],
   ];
   return (
     <>
@@ -51,7 +50,6 @@ export function Care({ tab, id }: { tab: CareTab; id?: string }) {
         )}
         {tab === "emergency" && <EmergencyMode member={chosen} />}
         {tab === "cook" && <CookCard members={chosen ? [chosen] : members} />}
-        {tab === "child" && chosen && <ChildMode member={chosen} />}
       </div>
     </>
   );
@@ -233,47 +231,6 @@ function CookCard({ members }: { members: Profile[] }) {
       </div>
       <p lang="ar" dir="rtl">يُرجى التحقق من كل المكونات والصلصات والزيوت، وتجنّب التلامس مع مسببات الحساسية. شكرًا.</p>
       <p lang="en" dir="ltr">Please check every ingredient, sauce and oil, and avoid cross-contact. Thank you.</p>
-    </section>
-  );
-}
-
-const FACES: Record<Level, string> = { red: "🙁", amber: "😐", green: "🙂" };
-const CHILD: Record<Level, { en: string; ar: string }> = {
-  red: { en: "Stop. Ask a grown-up.", ar: "ليس الآن. السؤال لشخص كبير أولًا." },
-  amber: { en: "Wait. Ask a grown-up first.", ar: "لحظة. السؤال لشخص كبير أولًا." },
-  green: { en: "A grown-up checked this label.", ar: "شخص كبير فحص هذا الملصق." },
-};
-
-function ChildMode({ member }: { member: Profile }) {
-  const { t, state, go } = useApp();
-  const lang = state.lang;
-  const other: Lang = lang === "ar" ? "en" : "ar";
-  const recent = lastScan(state, member.id);
-  if (!recent?.level) {
-    return (
-      <section className="big-card child">
-        <div className="child-face" aria-hidden="true">🍎</div>
-        <p>{t("childNone", { name: member.name })}</p>
-        <button className="primary" onClick={() => go({ name: "scan" })}>
-          <Icon name="scan" /> {t("childScan")}
-        </button>
-      </section>
-    );
-  }
-  const level = recent.level;
-  return (
-    <section className={`big-card child ${level}`}>
-      <div className="child-face" aria-hidden="true">{FACES[level]}</div>
-      <h1>{CHILD[level][lang]}</h1>
-      <p lang={other} dir={other === "ar" ? "rtl" : "ltr"}>{CHILD[level][other]}</p>
-      <p>{t("childAbout", { product: recent.name ?? t("unnamedProduct"), ago: ago(lang, recent.at) })}</p>
-      <div className="row center-row">
-        {recent.id && (
-          <button className="secondary" onClick={() => go({ name: "result", id: recent.id! })}>
-            {levelWord(lang, level)} ↗
-          </button>
-        )}
-      </div>
     </section>
   );
 }

@@ -33,7 +33,6 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 | **Emergency** | One tap calls 911. A card for paramedics (Arabic and English) shows the doctor's plan the parent saved; a text to the family says what was last eaten and where. Wiqaya never decides whether a reaction is happening. |
 | **Eating out** | Take a photo of a restaurant's menu (up to four pages). Gemma reads the dishes and what each is usually made with; the phone sorts them for each person: *avoid* (the menu names the allergen), *ask the staff first* (usually made with it, or the menu doesn't say), and *good to ask for*. Never "safe": a menu rarely lists every ingredient, so it ends with the cook card. |
 | **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen, with a read-aloud button. |
-| **Child mode** | A face and a voice that tell a young child, in Arabic and English, what a grown-up found on their last snack's label. |
 | **Pen expiry** | Gemma reads the expiry date off the epinephrine pen's box; the parent confirms it and gets a reminder before it runs out. |
 | **Consent and control** | Nothing is set up until a parent or guardian agrees. "Delete everything" removes all Wiqaya keeps on the phone. |
 | **Arabic and English, offline shell** | The whole app in both languages (right to left in Arabic). It installs on the home screen and opens without a connection; scans need the server. |

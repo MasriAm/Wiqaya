@@ -128,21 +128,13 @@ export function Home() {
               <h3>{t("quickMenu")} ↗</h3>
               <p>{t("quickMenuSub")}</p>
             </button>
-            {isParent ? (
+            {isParent && (
               <button className="quick" onClick={() => invite("grandparent")}>
                 <span className="icon-box">
                   <Icon name="qr" />
                 </span>
                 <h3>{t("quickInvite")} ↗</h3>
                 <p>{t("quickInviteSub")}</p>
-              </button>
-            ) : (
-              <button className="quick" onClick={() => go({ name: "care", tab: "child" })}>
-                <span className="icon-box">
-                  <Icon name="face" />
-                </span>
-                <h3>{t("quickChild")} ↗</h3>
-                <p>{t("quickChildSub")}</p>
               </button>
             )}
           </div>

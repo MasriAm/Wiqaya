@@ -172,10 +172,11 @@ export function Scan({ barcode: known }: { barcode?: string }) {
   const onFile = async (file: File | undefined) => {
     if (fileInput.current) fileInput.current.value = "";
     if (!file) return;
-    // a chosen photo: a barcode if it has one (and nothing else is taken yet), otherwise the ingredients
+    // a chosen photo is read for its ingredients. If it also shows a barcode, the barcode goes along: the server fills
+    // in from Open Food Facts only what the photo doesn't show, so a clear list on the photo always counts
     if (!barcode && !photos.length) {
       const code = await readFile(file).catch(() => null);
-      if (code) return lookUp(code);
+      if (code) setBarcode(code);
     }
     addPhoto(await shrink(file));
   };

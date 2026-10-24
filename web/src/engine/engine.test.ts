@@ -125,10 +125,14 @@ test("verdict: may-contain follows the member's policy", () => {
   assert.equal(verdicts(facts, [relaxed])[0].level, "amber");
 });
 
-test("verdict: never green when the list is cut off, unreadable, unknown or missing", () => {
+test("verdict: never green when the list is cut off, unreadable or missing", () => {
   assert.equal(verdicts(product(label(["sugar"], { complete: false })), [omar])[0].level, "amber");
   assert.equal(verdicts(product(label(["sugar"], { legible: false })), [omar])[0].level, "amber");
-  assert.equal(verdicts(product(label(["sugar", "xyzzy extract"])), [omar])[0].level, "amber");
+  // an unknown ingredient is noted, not amber on its own (Gemma's look-up decides that)
+  const unk = verdicts(product(label(["sugar", "xyzzy extract"])), [omar])[0];
+  assert.equal(unk.level, "green");
+  assert.equal(unk.reasons[0].kind, "all_clear");
+  assert.ok(unk.reasons.some((r) => r.kind === "unknown_ingredient" && r.quote === "xyzzy extract"));
   assert.equal(verdicts(product(null), [omar])[0].level, "amber");
   assert.equal(verdicts(product(null), [omar])[0].reasons[0].kind, "unknown_product");
 });
@@ -173,14 +177,14 @@ test("sticker: an ingredient missing from the Arabic sticker is caught", () => {
 });
 
 test("safe list: green for the approved recipe, amber when the recipe changes", () => {
-  // amber: an ingredient no list knows
-  const facts = product(label(["sugar", "cocoa", "zorbel extract"]));
+  // amber: the list is cut off
+  const facts = product(label(["sugar", "cocoa", "zorbel extract"], { complete: false }));
   assert.equal(verdicts(facts, [sara])[0].level, "amber");
   const recipe = recipeOf(facts);
   const safe = [{ barcode: facts.barcode!, recipe, member_id: "s", approved_by: "Mum", at: 1 }];
   assert.equal(verdicts(facts, [sara], safe)[0].level, "green");
   assert.equal(verdicts(facts, [sara], safe)[0].reasons[0].kind, "approved");
-  const changed = product(label(["sugar", "cocoa", "zorbel extract", "milk"]));
+  const changed = product(label(["sugar", "cocoa", "zorbel extract", "milk"], { complete: false }));
   const v = verdicts(changed, [sara], safe)[0];
   assert.notEqual(v.level, "green");
   assert.ok(v.reasons.some((r) => r.kind === "recipe_changed"));
