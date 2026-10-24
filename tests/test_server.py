@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from wiqaya import labels, off
+from wiqaya import gemma, labels, off
 from wiqaya.app import create_app
 from wiqaya.images import BadImage, clean
 from wiqaya.relay import Relay, RelayError
@@ -172,6 +172,22 @@ def test_research_keeps_only_sources_gemma_saw(monkeypatch):
     out, log = labels.research(g, ["E476", "salt"])
     assert out == [{"ingredient": "E476", "triggers": ["soy"], "reason": "r", "sources": ["https://real.example/e476"]}]
     assert log[0]["tool"] == "web_search"
+
+
+def test_gemma_falls_back_to_an_installed_gemma4(monkeypatch):
+    class R:
+        def __init__(self, j):
+            self.j = j
+
+        def json(self):
+            return self.j
+
+    tags = {"models": [{"name": "llama3:8b", "model": "llama3:8b"}, {"name": "gemma4:e4b", "model": "gemma4:e4b"}]}
+    monkeypatch.setattr(gemma.httpx, "get", lambda url, timeout: R(tags if url.endswith("/tags") else {"version": "0.40"}))
+    g = gemma.Gemma(model="gemma4:e4b-it-qat")
+    assert g.status() == {"available": True, "model": "gemma4:e4b", "ollama": "0.40"}
+    assert gemma.fallback({"gemma4:e2b", "gemma4:e4b-it-qat"}) == "gemma4:e4b-it-qat"
+    assert gemma.fallback({"llama3:8b"}) is None
 
 
 # ----------------------------------------------------------------------------- the API

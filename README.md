@@ -106,7 +106,8 @@ npm --prefix web ci && npm --prefix web run build
 ```
 
 Settings (environment variables): `WIQAYA_MODEL`, `WIQAYA_OLLAMA_URL`, `WIQAYA_DATA` (default `./.wiqaya`),
-`WIQAYA_WEB_SEARCH=0` to turn web search off.
+`WIQAYA_WEB_SEARCH=0` to turn web search off. If the configured model isn't pulled, Wiqaya uses another
+installed Gemma 4 (the E4B size first) and shows which one in the app's footer.
 
 ## Tests and benchmark
 
