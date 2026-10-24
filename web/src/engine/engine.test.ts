@@ -150,7 +150,7 @@ test("sticker: a 'may contain' line missing from the Arabic sticker is caught", 
   const original = label(["zucchero", "farina di frumento", "cacao"], { language: "it", may_contain: "Può contenere frutta a guscio" });
   const sticker: LabelFacts = { ...label(["سكر", "دقيق القمح", "كاكاو"]), language: "ar", may_contain: null };
   const facts = product(original, { sticker, pairs: [[0, 0], [1, 1], [2, 2]] });
-  assert.deepEqual(stickerGaps(facts).statements, ["may_contain"]);
+  assert.deepEqual(stickerGaps(facts).statements, [{ kind: "may_contain", missing: ["tree_nuts"] }]);
   const v = verdicts(facts, [sara])[0];
   assert.equal(v.level, "red");
   assert.ok(v.reasons.some((r) => r.kind === "sticker_gap" && r.trigger === "tree_nuts"));
@@ -185,4 +185,23 @@ test("safe list: an approval never turns red into green", () => {
   const v = verdicts(facts, [sara], safe)[0];
   assert.equal(v.level, "red");
   assert.ok(!v.reasons.some((r) => r.kind === "approved"));
+});
+
+test("sticker: a pair whose Arabic side lacks the allergen still counts as a gap", () => {
+  // Gemma read each list as one item and paired them; the sticker's has no peanuts
+  const original = label(["sugar, palm oil, peanuts, whey powder, cocoa"]);
+  const sticker: LabelFacts = { ...label(["سكر، زيت النخيل، مصل اللبن المجفف، كاكاو"]), language: "ar" };
+  const facts = product(original, { sticker, pairs: [[0, 0]] });
+  assert.deepEqual(stickerGaps(facts).ingredients.map((i) => i.missing), [["peanuts"]]);
+  const milk: Member = { id: "m", name: "M", avoid: ["milk"], diets: [], traces: "avoid" };
+  const [p, m] = verdicts(facts, [sara, milk]);
+  assert.ok(p.reasons.some((r) => r.kind === "sticker_gap" && r.trigger === "peanuts"));
+  assert.ok(!m.reasons.some((r) => r.kind === "sticker_gap"));
+});
+
+test("sticker: a shortened 'may contain' line is a gap for what it drops", () => {
+  const original = label(["zucchero"], { language: "it", may_contain: "Può contenere arachidi e frutta a guscio" });
+  const sticker: LabelFacts = { ...label(["سكر"]), language: "ar", may_contain: "قد يحتوي على الفول السوداني" };
+  const facts = product(original, { sticker, pairs: [[0, 0]] });
+  assert.deepEqual(stickerGaps(facts).statements, [{ kind: "may_contain", missing: ["tree_nuts"] }]);
 });

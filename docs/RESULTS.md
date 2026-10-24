@@ -17,16 +17,15 @@ node --experimental-strip-types bench/score.ts bench/out/labels
 |---|---|
 | Allergens on the label that were flagged (red or amber) | 78/78 (100%) |
 | **False greens** (an allergen on the label shown as no problem) | **0** |
-| Lines the Arabic sticker dropped that were reported | 12/13 (92%) |
+| Lines the Arabic sticker dropped that were reported | 13/13 (100%) |
 | Blurred or cut-off photos never shown green | 8/8 (100%) |
 | False alarms (flagged for an allergen that isn't there) | 0/372 (0%) |
 | Green when it should be (sharp, whole labels, allergen absent) | 229/229 (100%) |
 | Mean seconds per label (Gemma reading + pairing) | 7.6 |
 
-Misses:
-
-- label-016: the sticker drops "peanuts" and the photo is also cut off; the gap isn't reported as a sticker gap
-  (the verdict is still red for peanuts, from the original label).
+No misses. Four stickers also get a discrepancy for an allergen they do print (labels 008, 014, 016, 020), where
+Gemma's reading of the sticker left an item out or merged two. These can't change a verdict: a sticker gap only
+names an allergen that is on the original label, which is red already.
 
 ## What changed
 
@@ -65,6 +64,21 @@ can only lower "complete", never raise it). It caught both completed words and n
 other cut photos: on label-013 the reading already said incomplete; on label-002 and label-029 the cut word ("Em")
 is read as an ingredient Wiqaya doesn't know, which keeps them amber; on label-016 a whole phrase is outside the
 photo with no broken word to see. The extra call takes about 1.5 s.
+
+### Sticker gaps
+
+| | Before | After |
+|---|---|---|
+| Sticker drops reported | 12/13 | 13/13 |
+| Stickers with an extra discrepancy | 3 | 4 |
+
+On label-016 Gemma read each list as a single item (the whole original list, the whole sticker list) and paired
+the two, so the peanuts the sticker leaves out were "paired". The engine no longer trusts a pair blindly: an
+original item counts as missing from the sticker for every allergen it names that its sticker partner doesn't.
+"Contains" and "may contain" statements are compared the same way, so a sticker that shortens "may contain
+peanuts and nuts" to "may contain peanuts" is caught too. Each gap now lists the allergens missing, and the result
+screen shows those. The new extra discrepancy is label-008, where Gemma's reading of the sticker dropped the
+sesame the sticker prints.
 
 ## Limits
 

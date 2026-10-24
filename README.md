@@ -28,9 +28,14 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 | **Original vs Arabic sticker** | Gemma pairs the two ingredient lists across languages; the phone flags anything the sticker leaves out, such as "Può contenere frutta a guscio" (may contain nuts). |
 | **Hidden names** | The EU's 14 major allergens plus halal and vegetarian, in seven languages, and a **Jordanian pack** of local names (jameed, kishk, freekeh, fustuq abeed, turmus, labneh). |
 | **Gemma researches unknowns** | For an ingredient no list knows (E476, an unfamiliar additive), Gemma uses tools (web search and Open Food Facts) and cites its sources. This can only add caution (amber), never clear a product. |
-| **Family circle** | Grandma joins with a QR code. She scans; if it isn't green she taps "Ask a parent"; the parent approves or refuses on their own phone; the answer is back in seconds. Approved products turn green for the family, until the recipe changes. |
+| **Family circle** | Grandma joins with a QR code. She scans; if it isn't green she taps "Ask a parent"; the parent approves or refuses on their own phone; the answer is back in seconds. Only amber can be approved: red can never be overridden. |
+| **Safe list** | Products a parent approved, tied to the exact recipe. If the ingredient list changes, the approval stops counting and a recipe change alert shows. |
 | **Emergency** | One tap calls 911. A card for paramedics (Arabic and English) shows the doctor's plan the parent saved; a text to the family says what was last eaten and where. Wiqaya never decides whether a reaction is happening. |
-| **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen. |
+| **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen, with a read-aloud button. |
+| **Child mode** | A face and a voice that tell a young child, in Arabic and English, what a grown-up found on their last snack's label. |
+| **Pen expiry** | Gemma reads the expiry date off the epinephrine pen's box; the parent confirms it and gets a reminder before it runs out. |
+| **Consent and control** | Nothing is set up until a parent or guardian agrees. "Delete everything" removes all Wiqaya keeps on the phone. |
+| **Arabic and English, offline shell** | The whole app in both languages (right to left in Arabic). It installs on the home screen and opens without a connection; scans need the server. |
 
 ## How it works
 
@@ -56,9 +61,11 @@ safe**.
 | Call | Input (product data only) | Output |
 |---|---|---|
 | Read | a label photo | ingredient lists per language, "contains" and "may contain" lines, complete? legible? |
+| Second look | the same photo, when the reading says the list is complete | the list's printed lines, copied as they are; code checks whether one ends in a word the photo's edge cut |
 | Pair | original list + Arabic sticker list | which item is which; the engine finds what's missing |
 | Research (tool use) | unknown ingredient names | possible allergen groups, with the sources Gemma looked at (web search, Open Food Facts) |
 | Explain | the product's findings (all of them, not the family's) | one plain sentence each, facts only |
+| Expiry | a photo of a medicine box | the printed expiry date, for the parent to confirm |
 
 All calls use JSON schemas, temperature 0 and no "thinking" mode. Sources Gemma cites are kept only if they
 appeared in its tool results.
