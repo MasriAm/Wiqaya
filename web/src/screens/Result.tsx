@@ -44,24 +44,13 @@ export function findings(results: MemberVerdict[], members: Member[]): Finding[]
     const name = members.find((m) => m.id === v.member_id)?.name ?? "";
     for (const r of v.reasons) {
       if (r.level === "green") continue;
-      const key = [r.kind, r.trigger ?? "", r.quote ?? "", r.source].join("|");
+      const key = [r.kind, r.trigger ?? "", r.kind === "unknown_ingredient" ? "" : r.quote ?? "", r.source].join("|");
       const f = out.get(key) ?? { key, reason: r, levels: [] };
       if (!f.levels.some((l) => l.member_id === v.member_id)) f.levels.push({ member_id: v.member_id, name, level: r.level });
       out.set(key, f);
     }
   }
   return [...out.values()].sort((a, b) => ORDER[worst(a.levels.map((l) => l.level))] - ORDER[worst(b.levels.map((l) => l.level))]);
-}
-
-/** What the result means, in plain sentences, for reading aloud. */
-export function meaning(lang: Lang, results: MemberVerdict[], members: Member[], productName: string | null): string[] {
-  const lines = results.map((r) => {
-    const name = members.find((m) => m.id === r.member_id)?.name ?? "";
-    const head = tr(lang, r.level === "red" ? "resTitleOneRed" : "memberPill", { name, level: levelWord(lang, r.level) });
-    const first = r.reasons.find((x) => x.level === r.level);
-    return first ? `${head}. ${describe(lang, first, name)}` : `${head}.`;
-  });
-  return [productName ?? "", ...lines].filter(Boolean);
 }
 
 /** Every allergen the label names, whoever it matters to: the strongest way it is named, and the words. */
@@ -183,13 +172,6 @@ export function Result({ id }: { id: string }) {
     share({ t: "answer", id: newId(), ask: "", by: me!.name, at: Date.now(), decision: "approved", note: "", safe: [safeEntry(facts, mid, me!.name)] });
   };
 
-  const speak = () => {
-    const u = new SpeechSynthesisUtterance([...meaning(lang, results, members, facts.name), t("checkNotGuarantee")].join(". "));
-    u.lang = lang === "ar" ? "ar-JO" : "en-GB";
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  };
-
   return (
     <>
       <Heading eyebrow={overall === "green" ? t("resEyebrowClear") : t("resEyebrowFlag")} title={title} lead={source} />
@@ -203,9 +185,6 @@ export function Result({ id }: { id: string }) {
                 {[facts.brand, t("scannedByAgo", { name: scan.by.id === me?.id ? t("you") : scan.by.name, ago: ago(lang, scan.at) })].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <button className="icon-btn" onClick={speak} aria-label={t("readAloud")}>
-              <Icon name="sound" />
-            </button>
           </div>
         </section>
 
@@ -278,18 +257,8 @@ export function Result({ id }: { id: string }) {
           {onLabel.some((n) => avoided.has(n.trigger)) && <p className="legend"><span className="dot-hit" /> {t("onLabelLegend")}</p>}
 
           {unknowns.length > 0 && (
-            <div className="unknowns">
-              <h4>{t("unknownTitle")}</h4>
-              <div className="chips">
-                {unknowns.map((u) => (
-                  <span key={u} className="chip amber-chip" dir="auto">{u}</span>
-                ))}
-              </div>
-              {researching ? (
-                <p className="row small-note" role="status"><Spinner /> {t("researching", { n: unknowns.length })}</p>
-              ) : (
-                <p className="small-note">{t("unknownNote")}</p>
-              )}
+            <div className="warning unknowns" role="note">
+              {t("unknownNote")} {researching && <Spinner />}
             </div>
           )}
 
