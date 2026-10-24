@@ -32,8 +32,8 @@ class FakeGemma:
     def json(self, system, user, schema, images=None, num_predict=0, history=None):
         self.sent.append(user)
         props = schema["properties"]
-        if "labels" in props:
-            return self.readings.pop(0), {}
+        if "labels" in props:  # the second reading of the same photo gets the next one, or the same again
+            return (self.readings.pop(0) if len(self.readings) > 1 else self.readings[0]), {}
         if "dishes" in props:
             return {"restaurant": "Beit Sitti", "language": "en", "dishes": self.dishes}, {}
         if "lines" in props:
@@ -157,6 +157,41 @@ def test_edge_check_only_lowers_complete():
     assert len(g.sent) == 1
 
 
+def test_two_readings_must_agree():
+    # a list Gemma made up: the second reading of the same photo comes out different
+    g = FakeGemma(readings=[reading("only", "tr", ["un", "şeker", "ayçiçek yağı", "kakao", "süt tozu"]),
+                            reading("only", "tr", ["buğday unu", "tuz", "maya", "bitkisel yağ"])])
+    lab = labels.read(g, "img")[0]["labels"][0]
+    assert lab["legible"] is False and lab["complete"] is True
+    # the same reading twice is fine
+    g = FakeGemma(readings=[reading("only", "en", ["sugar", "cocoa", "salt"])])
+    assert labels.read(g, "img")[0]["labels"][0]["legible"] is True
+
+
+def test_short_list_without_contains_is_not_complete_and_lumped_lists_split():
+    # the product's name read as its ingredients
+    g = FakeGemma(readings=[reading("only", "en", ["Milk chocolate with hazelnut cream", "and whole hazelnuts"])])
+    assert labels.read(g, "img")[0]["labels"][0]["complete"] is False
+    lab = labels._label({"ingredients": [{"text": "zucchero, farina (frumento), sale", "en": "sugar, flour (wheat), salt"}]})
+    assert [i["en"] for i in lab["ingredients"]] == ["sugar", "flour (wheat)", "salt"]
+    lab = labels._label({"ingredients": [{"text": "İçindekiler: Şeker, süt tozu, fındık", "en": "Ingredients: sugar, milk powder, hazelnuts"}]})
+    assert [i["text"] for i in lab["ingredients"]] == ["Şeker", "süt tozu", "fındık"]
+    lab = labels._label({"ingredients": [{"text": "sugar", "en": "sugar"}, {"text": "Contains:", "en": "Contains:"}]})
+    assert [i["text"] for i in lab["ingredients"]] == ["sugar"]
+    lab = labels._label({"ingredients": [{"text": "a, b, c", "en": "a and b, c"}]})
+    assert len(lab["ingredients"]) == 1  # the English splits differently: kept whole
+
+
+def test_edge_check_survives_a_cut_short_answer():
+    class Cut(FakeGemma):
+        def json(self, system, user, schema, images=None, num_predict=0, history=None):
+            if "lines" in schema["properties"]:
+                raise gemma.GemmaError("not JSON", '{"lines": ["Zutaten: Weizenmehl, Gerstenmalzextra", "Natron, Zu')
+            return super().json(system, user, schema, images, num_predict, history)
+    items = ["Weizenmehl", "Gerstenmalzextrakt", "Natron"]
+    assert labels.read(Cut(readings=[reading("only", "de", items)]), "img")[0]["labels"][0]["complete"] is False
+
+
 def test_pair_checks_indices():
     g = FakeGemma(pairs=[{"original": 0, "arabic": 0}, {"original": 1, "arabic": 0}, {"original": 7, "arabic": 1}])
     o = {"language": "it", "ingredients": [{"text": "a"}, {"text": "b"}, {"text": "c"}]}
@@ -213,6 +248,22 @@ def test_scan_two_photos_original_and_sticker(client):
     assert f["label"]["language"] == "it" and f["label"]["may_contain"] == "Può contenere frutta a guscio"
     assert f["sticker"]["language"] == "ar" and f["sticker"]["may_contain"] is None
     assert f["pairs"] == [[0, 0], [1, 1]]
+
+
+def test_a_checked_photo_reading_answers_the_next_barcode_scan(client, monkeypatch):
+    monkeypatch.setattr(off, "fetch", lambda code, cache=None: None)  # not in Open Food Facts
+    good = reading("only", "ar", ["سكر", "دقيق القمح", "ملح"])
+    c = client(FakeGemma(readings=[good]))
+    assert c.get("/api/product/6251234567890").status_code == 404
+    r = c.post("/api/scan", files=[("photos", ("a.png", png(), "image/png"))], data={"barcode": "6251234567890"})
+    assert r.status_code == 200, r.text
+    again = c.get("/api/product/6251234567890").json()
+    assert [i["text"] for i in again["label"]["ingredients"]] == ["سكر", "دقيق القمح", "ملح"]
+    assert again["read_from_photo"] > 0
+    # a list that didn't pass the checks is never kept
+    c = client(FakeGemma(readings=[reading("only", "ar", ["سكر", "دقيق القمح", "ملح"], complete=False)]))
+    c.post("/api/scan", files=[("photos", ("a.png", png(), "image/png"))], data={"barcode": "6250000000017"})
+    assert c.get("/api/product/6250000000017").status_code == 404
 
 
 def test_scan_rejects_bad_input(client):

@@ -11,6 +11,7 @@ sensitive. The design goal: **the product is shared, the person never is.**
 | Who is allergic to what | yes | no | no |
 | Label photo | yes | passes through, cleaned, not stored | yes (the label only) |
 | Barcode scanned | yes | yes, not linked to anyone | no |
+| Ingredient list read from a photo of a product Open Food Facts doesn't have | yes | kept with the barcode (only when the reading passed every check), so the next scan of that product is instant; never who scanned it | yes (the label only) |
 | Restaurant menu (link, photo or PDF) | yes, with the result | fetches the link or passes the file through, not stored | yes (the menu only) |
 | Location | only inside the emergency text, written on the phone | no | no |
 | Scan history | yes, and the family (encrypted) | no | no |

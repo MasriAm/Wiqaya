@@ -299,6 +299,8 @@
       "terms": {
         "en": [
           "milk",
+          "dairy",
+          "dairy products",
           "milk powder",
           "skimmed milk",
           "whole milk",
@@ -327,6 +329,8 @@
         ],
         "ar": [
           "حليب",
+          "ألبان",
+          "منتجات الألبان",
           "حليب مجفف",
           "حليب بودرة",
           "بودرة الحليب",

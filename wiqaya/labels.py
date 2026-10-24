@@ -11,6 +11,8 @@ Never a name, an allergy profile or a location.
 
 from __future__ import annotations
 
+import io
+import json
 import re
 import unicodedata
 from typing import Any
@@ -18,6 +20,7 @@ from typing import Any
 from wiqaya import off
 from wiqaya.gemma import Gemma, GemmaError
 from wiqaya.search import web_search
+from wiqaya.text import split_ingredients
 
 TRIGGERS = {
     "gluten": "cereals containing gluten (wheat, barley, rye, oats, spelt)",
@@ -52,7 +55,8 @@ Return one entry in "labels" for each ingredient list you can see:
   that one ingredient (repeat the text if it is already English).
 - contains: the allergen statement ("Contains:", "يحتوي على:", "Contiene:"), copied exactly, or "" if there is none.
 - may_contain: the precautionary statement ("May contain", "Traces of", "قد يحتوي على", "Può contenere",
-  "Peut contenir", "İz miktarda"), copied exactly, or "" if there is none.
+  "Peut contenir", "İz miktarda", "Made in a facility that also processes ..."), copied exactly, or "" if there is
+  none.
 - complete: true when you can see where the list starts and where it ends (its last ingredient, usually followed by
   a full stop, a "may contain" line or another section such as nutrition). false only when the list is visibly cut
   off: text running into the photo's edge mid-word or mid-list, covered, or folded away.
@@ -96,9 +100,38 @@ HINTS = {
 }
 
 
+# an ingredient list's heading, in the languages on packs sold in Jordan
+_HEADING = re.compile(r"^\s*(ingredients?|ingr[eé]dients?|ingredienti|ingredientes|zutaten|i̇?çindekiler|"
+                      r"składniki|sastojci|složení|ingrediente|المكونات|مكونات|المحتويات)\s*[:：]\s*", re.IGNORECASE)
+
+
+# an item that is only a heading ("Contains:", "Ingredients:"), read as if it were an ingredient
+_ONLY_HEADING = re.compile(r"^\W*(contains|may contain|ingredients?|يحتوي على|قد يحتوي على|المكونات|مكونات)\W*$",
+                           re.IGNORECASE)
+
+
+def _unheaded(text: str | None) -> str | None:
+    return _HEADING.sub("", text) if text else text
+
+
+def _split(ing: dict) -> list[dict]:
+    """Gemma sometimes returns a whole list as one ingredient. Split it on its top-level commas, keeping each English
+    translation only when the two split the same way (otherwise the whole item stays as it is)."""
+    parts = split_ingredients(ing["text"])
+    if len(parts) < 3:
+        return [ing]
+    en = split_ingredients(ing["en"] or "")
+    if len(en) != len(parts):
+        return [ing]
+    return [{"text": t, "en": e} for t, e in zip(parts, en)]
+
+
 def _label(raw: dict) -> dict:
     ings = [{"text": str(i.get("text", "")).strip(), "en": (str(i.get("en", "")).strip() or None)}
             for i in raw.get("ingredients") or [] if str(i.get("text", "")).strip()]
+    # "Ingredients: sugar" is sugar; then a whole list given as one item is split
+    ings = [{"text": _unheaded(i["text"]), "en": _unheaded(i["en"])} if k == 0 else i for k, i in enumerate(ings)]
+    ings = [part for ing in ings if ing["text"] and not _ONLY_HEADING.match(ing["text"]) for part in _split(ing)]
     lang = str(raw.get("language") or "").strip().lower()[:2] or None
     return {"language": lang, "ingredients": ings,
             "contains": (str(raw.get("contains") or "").strip() or None),
@@ -127,12 +160,18 @@ def cut_off(gemma: Gemma, image_b64: str, labels: list[dict]) -> bool:
     it, Gemma quietly finishes a word the photo's edge cut ("Gerstenmalzextra" becomes "Gerstenmalzextrakt"). So Gemma
     copies the printed lines as they are, and code checks them: a line that ends in the start of a word Gemma read
     whole ran into the edge of the photo."""
-    answer, _ = gemma.json(LINES_SYSTEM, "The photo:", LINES_SCHEMA, images=[image_b64], num_predict=512)
+    try:
+        answer, _ = gemma.json(LINES_SYSTEM, "The photo:", LINES_SCHEMA, images=[image_b64], num_predict=1536)
+        lines = list(answer.get("lines") or [])[:-1]  # the last line ends the list; a wrapped line's end is the edge
+    except GemmaError as e:
+        # a big panel in many languages can run past the length limit: check the lines that came through whole
+        # (all of them: the answer stopped, not the list). Nothing came through: there is nothing to check.
+        lines = [json.loads(f'"{m}"') for m in re.findall(r'"((?:[^"\\]|\\.)*)"\s*[,\]]', e.text)]
     read: set[str] = set()
     for lab in labels:
         for text in [i["text"] for i in lab["ingredients"]] + [lab["contains"], lab["may_contain"]]:
             read.update(_words(text))
-    for line in (answer.get("lines") or [])[:-1]:  # the last line ends the list; a wrapped line's end is the edge
+    for line in lines:
         words = _words(str(line))
         last = words[-1] if words else ""
         if len(last) >= 3 and last not in read and any(w.startswith(last) for w in read):
@@ -140,13 +179,59 @@ def cut_off(gemma: Gemma, image_b64: str, labels: list[dict]) -> bool:
     return False
 
 
+def _variant(image_b64: str) -> str:
+    """The same photo, cropped a little and scaled down: what is printed reads the same; what is guessed changes."""
+    import base64
+
+    from PIL import Image
+
+    try:
+        img = Image.open(io.BytesIO(base64.b64decode(image_b64)))
+    except (ValueError, OSError):
+        return image_b64
+    w, h = img.size
+    img = img.crop((w // 25, h // 25, w - w // 25, h - h // 25)).resize((w * 17 // 20, h * 17 // 20))
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=85)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+AGREE = 0.6  # share of ingredient words two readings of the same photo must have in common
+
+
+def _ingredient_words(labels: list[dict]) -> set[str]:
+    return {w for lab in labels for i in lab["ingredients"] for w in _words(i["text"]) if len(w) >= 3}
+
+
+def agree(a: list[dict], b: list[dict]) -> float:
+    x, y = _ingredient_words(a), _ingredient_words(b)
+    return len(x & y) / max(1, len(x | y))
+
+
 def read(gemma: Gemma, image_b64: str, hint: str = "") -> tuple[dict, dict]:
-    """One photo → ``{"product_name", "brand", "labels": [...]}`` and Gemma's stats."""
+    """One photo → ``{"product_name", "brand", "labels": [...]}`` and Gemma's stats.
+
+    Then two checks that can only lower "complete" and "legible", never raise them. On real photos (small, curved,
+    shiny print) Gemma sometimes writes a plausible list that isn't there, or reads the product's name as one; a
+    reading only counts as whole and legible when a second reading, of a slightly changed copy of the photo, agrees
+    with it, and when it has at least three ingredients or a "contains" line. And the edge check: a list that runs
+    off the photo."""
     user = ("Read every ingredient list on this package. " + HINTS.get(hint, "")).strip()
     answer, stats = gemma.json(READ_SYSTEM, user, READ_SCHEMA, images=[image_b64], num_predict=3072)
     labels = [_label(lab) for lab in answer.get("labels") or []]
     labels = [lab for lab in labels if lab["ingredients"] or lab["contains"] or lab["may_contain"]]
-    # the edge check can only lower "complete", never raise it
+    for lab in labels:
+        if len(lab["ingredients"]) < 3 and not lab["contains"]:
+            lab["complete"] = False
+    if any(lab["complete"] and lab["legible"] for lab in labels):
+        try:
+            again, _ = gemma.json(READ_SYSTEM, user, READ_SCHEMA, images=[_variant(image_b64)], num_predict=3072)
+            second = [_label(lab) for lab in again.get("labels") or []]
+        except GemmaError:
+            second = []
+        if agree(labels, second) < AGREE:
+            for lab in labels:
+                lab["legible"] = False
     if any(lab["complete"] for lab in labels) and cut_off(gemma, image_b64, labels):
         for lab in labels:
             lab["complete"] = False
