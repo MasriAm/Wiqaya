@@ -3,7 +3,7 @@
 import type { Level, SafeEntry } from "../engine/types.ts";
 import { api } from "./api.ts";
 import { open, randomId, seal, sign, verify, b64u, unb64u } from "./crypto.ts";
-import type { AppState, AskRequest, Circle, Person, Profile, ScanRecord } from "./state.ts";
+import type { AppState, AskRequest, Choice, Circle, Person, Profile, ScanRecord } from "./state.ts";
 
 export type Message =
   | { t: "hello"; id: string; from: Person }
@@ -11,19 +11,24 @@ export type Message =
   | { t: "scan"; id: string; by: Person; at: number; name: string | null; levels: Record<string, Level> }
   | { t: "ask"; id: string; from: Person; at: number; scan: ScanRecord; member_ids: string[] }
   | { t: "answer"; id: string; ask: string; by: string; at: number; decision: "approved" | "refused"; note: string; safe: SafeEntry[]; sig?: string }
-  | { t: "unsafe"; id: string; barcode: string; member_id: string; sig?: string };
+  | { t: "unsafe"; id: string; barcode: string; member_id: string; sig?: string }
+  | ({ t: "choice"; id: string; from: Person } & Choice);
 
 // ------------------------------------------------------------------------------------------------ invites
+export type InviteRole = "child" | "grandparent";
+
 export interface Invite {
   c: string;
   k: string;
   p: string;
-  r: "parent" | "caregiver";
-  s?: string;
+  r: InviteRole;
+  /** A child's invite: their profile's id and name. */
+  m?: string;
+  n?: string;
 }
 
-export function inviteLink(circle: Circle, role: "parent" | "caregiver"): string {
-  const inv: Invite = { c: circle.id, k: circle.key, p: circle.parentPub, r: role, ...(role === "parent" ? { s: circle.parentPriv } : {}) };
+export function inviteLink(circle: Circle, role: InviteRole, child?: Profile): string {
+  const inv: Invite = { c: circle.id, k: circle.key, p: circle.parentPub, r: role, ...(child ? { m: child.id, n: child.name } : {}) };
   const payload = b64u(new TextEncoder().encode(JSON.stringify(inv)));
   // the fragment (#...) never reaches any server
   return `${location.origin}/#join=${payload}`;
@@ -33,9 +38,10 @@ export function parseInvite(text: string): Invite | null {
   try {
     const m = text.match(/#join=([A-Za-z0-9_-]+)/) ?? text.match(/^([A-Za-z0-9_-]{40,})$/);
     if (!m) return null;
-    const inv = JSON.parse(new TextDecoder().decode(unb64u(m[1]))) as Invite;
-    if (!inv.c || !inv.k || !inv.p || (inv.r !== "parent" && inv.r !== "caregiver")) return null;
-    return inv;
+    const inv = JSON.parse(new TextDecoder().decode(unb64u(m[1]))) as Invite & { r: string };
+    if ((inv.r as string) === "caregiver") inv.r = "grandparent"; // links made before the roles changed
+    if (!inv.c || !inv.k || !inv.p || (inv.r !== "child" && inv.r !== "grandparent") || (inv.r === "child" && !inv.m)) return null;
+    return inv as Invite;
   } catch {
     return null;
   }
@@ -101,7 +107,12 @@ async function apply(s: AppState, msg: Message, circle: Circle, notices: string[
     case "profiles":
       if (msg.v <= s.profilesVersion || !(await signedByParent(circle, msg))) return s;
       if (s.profilesVersion > 0) notices.push(["newProfiles"]);
-      return { ...s, members: msg.members, safe: msg.safe ?? s.safe, familyName: msg.family ?? s.familyName, profilesVersion: msg.v };
+      {
+        // a child's own choice is used until the parent's profile has taken it in
+        const c = s.myChoice;
+        const taken = c && (msg.members.find((m) => m.id === c.member_id)?.childAt ?? 0) >= c.at;
+        return { ...s, members: msg.members, safe: msg.safe ?? s.safe, familyName: msg.family ?? s.familyName, profilesVersion: msg.v, myChoice: taken ? null : s.myChoice };
+      }
     case "scan":
       if (mine(msg.by.id) || s.feed.some((f) => f.id === msg.id)) return s;
       return { ...s, feed: [{ id: msg.id, at: msg.at, by: msg.by, name: msg.name, levels: msg.levels }, ...s.feed] };
@@ -124,5 +135,13 @@ async function apply(s: AppState, msg: Message, circle: Circle, notices: string[
     case "unsafe":
       if (!(await signedByParent(circle, msg))) return s;
       return { ...s, safe: s.safe.filter((e) => !(e.barcode === msg.barcode && e.member_id === msg.member_id)) };
+    case "choice": {
+      const choice: Choice = { at: msg.at, member_id: msg.member_id, avoid: msg.avoid, diets: msg.diets, celiac: msg.celiac };
+      if (mine(msg.from.id)) return { ...s, myChoice: choice };
+      // only a parent's phone can take it in; only the child the invite was for can choose for that profile
+      if (s.me?.role !== "parent" || msg.from.role !== "child" || msg.from.member_id !== msg.member_id) return s;
+      notices.push(["childChose", "name", msg.from.name]);
+      return { ...s, choices: [...s.choices.filter((x) => x.member_id !== msg.member_id), { ...choice, from: msg.from.name }] };
+    }
   }
 }

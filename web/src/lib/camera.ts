@@ -54,12 +54,22 @@ export async function readFile(file: Blob, kind: "product" | "qr" = "product"): 
   return res.find((r) => r.isValid && r.text)?.text ?? null;
 }
 
-/** A full-resolution photo from the video. */
+/** A full-resolution photo of what the viewfinder shows. The video fills its box ("object-fit: cover"), so the edges
+ * of the camera's frame are hidden; the photo is cut the same way, so it looks exactly as framed, not zoomed out. */
 export async function capture(video: HTMLVideoElement): Promise<Blob> {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  const box = video.clientWidth / Math.max(1, video.clientHeight);
+  let sw = vw;
+  let sh = vh;
+  if (video.clientWidth && video.clientHeight) {
+    if (vw / vh > box) sw = Math.round(vh * box);
+    else sh = Math.round(vw / box);
+  }
   const c = document.createElement("canvas");
-  c.width = video.videoWidth;
-  c.height = video.videoHeight;
-  c.getContext("2d")!.drawImage(video, 0, 0);
+  c.width = sw;
+  c.height = sh;
+  c.getContext("2d")!.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, sw, sh);
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("capture"))), "image/jpeg", 0.92));
 }
 

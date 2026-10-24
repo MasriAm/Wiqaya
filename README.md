@@ -23,12 +23,12 @@ Built for Hack Day Amman (JOSA × MLH), theme *Digital Health & Wellness*: "stop
 
 | | |
 |---|---|
-| **Scan** | Barcode first (Open Food Facts); otherwise photograph the ingredients, and the Arabic sticker if there is one. |
-| **Check, per person** | Red: an avoided ingredient is on the label. Amber: something can't be ruled out (a "may contain" line, an unknown ingredient, a cut-off photo). Green: the whole list was read and nothing on it is avoided. |
+| **Scan** | One viewfinder: a barcode is read by itself (Open Food Facts); otherwise the shutter photographs the ingredients, and the Arabic sticker if there is one. The photo is exactly what was framed. |
+| **Check, per person** | A big card per person, with the allergens that caused it, and a tile for every allergen on the label. Red: an avoided ingredient is on the label. Amber: something can't be ruled out (a "may contain" line, an unknown ingredient, a cut-off photo). Green: the whole list was read and nothing on it is avoided. |
 | **Original vs Arabic sticker** | Gemma pairs the two ingredient lists across languages; the phone flags anything the sticker leaves out, such as "Può contenere frutta a guscio" (may contain nuts). |
 | **Hidden names** | The EU's 14 major allergens plus halal and vegetarian, in seven languages, and a **Jordanian pack** of local names (jameed, kishk, freekeh, fustuq abeed, turmus, labneh). |
 | **Gemma researches unknowns** | For an ingredient no list knows (E476, an unfamiliar additive), Gemma uses tools (web search and Open Food Facts) and cites its sources. This can only add caution (amber), never clear a product. |
-| **Family circle** | Grandma joins with a QR code. She scans; if it isn't green she taps "Ask a parent"; the parent approves or refuses on their own phone; the answer is back in seconds. Only amber can be approved: red can never be overridden. |
+| **Family: parent, children, grandparents** | A parent creates the family and owns it. Each child joins on their own phone with their own QR code and chooses their allergies; the parent's phone takes the choice in (it can only add) and the parent can change anything. A child's phone checks for that child only. Grandparents join with a QR code, scan, and tap "Ask a parent" when a result isn't green; the parent approves or refuses on their own phone. Only amber can be approved: red can never be overridden. |
 | **Safe list** | Products a parent approved, tied to the exact recipe. If the ingredient list changes, the approval stops counting and a recipe change alert shows. |
 | **Emergency** | One tap calls 911. A card for paramedics (Arabic and English) shows the doctor's plan the parent saved; a text to the family says what was last eaten and where. Wiqaya never decides whether a reaction is happening. |
 | **Card for the cook** | The child's allergies with every hidden name, in Arabic and English, for restaurants, the school canteen or a relative's kitchen, with a read-aloud button. |

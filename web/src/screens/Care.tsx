@@ -3,7 +3,7 @@ import allergens from "../engine/data/allergens.json" with { type: "json" };
 import jordan from "../engine/data/jordan.json" with { type: "json" };
 import type { Level, TriggerId } from "../engine/types.ts";
 import { ago, joinNames, levelWord, shortDate, t as tr, triggerName } from "../i18n.ts";
-import type { Lang, Profile } from "../lib/state.ts";
+import { checked, type Lang, type Profile } from "../lib/state.ts";
 import { useApp } from "../App.tsx";
 import { Avatar, Heading, Icon } from "../ui.tsx";
 import { penReminders } from "./Home.tsx";
@@ -14,7 +14,7 @@ export type CareTab = "emergency" | "cook" | "child";
  * composed on this phone. Wiqaya never decides whether a reaction is happening and never gives treatment advice. */
 export function Care({ tab, id }: { tab: CareTab; id?: string }) {
   const { t, go, state } = useApp();
-  const members = state.members;
+  const members = checked(state);
   // the cook card can cover everyone; the other tabs are about one person
   const chosen = id === "*" ? undefined : members.find((m) => m.id === id) ?? (members.length === 1 || tab === "child" ? members[0] : undefined);
   const lead = chosen ? t("careLead", { name: chosen.name }) : t("careLeadAll");

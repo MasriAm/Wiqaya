@@ -216,3 +216,14 @@ export function productGlyph(name: string | null | undefined): string {
 export function ProductThumb({ name, thumb, big = false }: { name: string | null | undefined; thumb?: string; big?: boolean }) {
   return <span className={`product${big ? " big" : ""}`} aria-hidden="true">{thumb ? <img src={thumb} alt="" /> : productGlyph(name)}</span>;
 }
+
+const ALLERGEN_GLYPHS: Record<string, string> = {
+  gluten: "🌾", milk: "🥛", eggs: "🥚", peanuts: "🥜", tree_nuts: "🌰", pine_nuts: "🌲", sesame: "🥯", soy: "🫛",
+  fish: "🐟", crustaceans: "🦐", molluscs: "🦑", celery: "🥬", mustard: "🌭", sulphites: "🍷", lupin: "🌼",
+  halal: "🍖", vegetarian: "🥩",
+};
+
+/** A picture for an allergen or diet, next to its name (never instead of it). */
+export function allergenGlyph(id: string): string {
+  return ALLERGEN_GLYPHS[id] ?? "⚠️";
+}

@@ -4,6 +4,7 @@ import { ago, pillWord, shortDate } from "../i18n.ts";
 import { useApp } from "../App.tsx";
 import { Avatar, Heading, HeroArt, Icon, Lines, Pill, ProductThumb } from "../ui.tsx";
 import { MemberCard } from "./ProfileEditor.tsx";
+import { checked } from "../lib/state.ts";
 import { worst } from "./Result.tsx";
 
 const DAY = 86400_000;
@@ -22,7 +23,8 @@ export function Home() {
   const [all, setAll] = useState(false);
   const waiting = state.requests.filter((r) => r.status === "waiting" && (isParent ? r.from.id !== me?.id : r.from.id === me?.id));
   const answered = state.requests.filter((r) => r.status !== "waiting" && r.from.id === me?.id && Date.now() - r.at < 36 * 3600_000);
-  const pens = penReminders(state.members);
+  const members = checked(state);
+  const pens = penReminders(members);
 
   type Row = { id: string; at: number; by: string; name: string | null; level: Level; own: boolean; thumb?: string };
   const rows: Row[] = [
@@ -91,12 +93,12 @@ export function Home() {
               {t("manageFamily")} ↗
             </button>
           </div>
-          {state.members.length === 0 ? (
+          {members.length === 0 ? (
             <p className="big-card small-note">{t("waitingProfiles")}</p>
           ) : (
             <div className="family-row">
-              {state.members.map((m, i) => (
-                <MemberCard key={m.id} p={m} i={i} onClick={() => go(isParent ? { name: "member", id: m.id } : { name: "care", tab: "emergency", id: m.id })} />
+              {members.map((m, i) => (
+                <MemberCard key={m.id} p={m} i={i} onClick={() => go(isParent ? { name: "member", id: m.id } : me?.role === "child" ? { name: "family" } : { name: "care", tab: "emergency", id: m.id })} />
               ))}
             </div>
           )}
@@ -120,7 +122,7 @@ export function Home() {
               <p>{t("quickCookSub")}</p>
             </button>
             {isParent ? (
-              <button className="quick" onClick={() => invite("caregiver")}>
+              <button className="quick" onClick={() => invite("grandparent")}>
                 <span className="icon-box">
                   <Icon name="qr" />
                 </span>

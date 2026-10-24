@@ -133,6 +133,13 @@ test("verdict: never green when the list is cut off, unreadable, unknown or miss
   assert.equal(verdicts(product(null), [omar])[0].reasons[0].kind, "unknown_product");
 });
 
+test("verdict: a profile with no allergies yet is never green", () => {
+  const facts = product(label(["sugar", "salt"]));
+  const v = verdicts(facts, [{ id: "new", name: "New", avoid: [], diets: [], traces: "avoid" }])[0];
+  assert.equal(v.level, "amber");
+  assert.equal(v.reasons[0].kind, "no_allergies");
+});
+
 test("verdict: Gemma's suspicion adds amber, never green", () => {
   const facts = product(label(["sugar", "cocoa"]), { suspicions: [{ ingredient: "cocoa", triggers: ["milk"], reason: "x", sources: [] }] });
   const m: Member = { id: "m", name: "M", avoid: ["milk"], diets: [], traces: "avoid" };

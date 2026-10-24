@@ -99,7 +99,8 @@ export type ReasonKind =
   | "not_compared" // two labels, but they could not be compared
   | "recipe_changed" // approved before, but the ingredients changed
   | "approved" // a parent approved this product for this member
-  | "all_clear"; // nothing found, everything understood
+  | "all_clear" // nothing found, everything understood
+  | "no_allergies"; // the profile has no allergies yet (a child still choosing them), so nothing can be cleared
 
 export type Source = "label" | "sticker" | "open_food_facts" | "jordan_pack" | "gemma" | "safe_list" | "wiqaya";
 

@@ -87,6 +87,10 @@ export function verdicts(facts: ProductFacts, members: Member[], safe: SafeEntry
   const recipe = recipeOf(facts);
 
   return members.map((member) => {
+    // nothing to check against yet: never green, and nothing a parent can approve
+    if (!member.avoid.length && !member.diets.length) {
+      return { member_id: member.id, level: "amber", reasons: [{ level: "amber", kind: "no_allergies", source: "wiqaya" }] };
+    }
     const watch = new Set<TriggerId>([...member.avoid, ...member.diets]);
     const reasons: Reason[] = [];
     const add = (r: Reason) => {
