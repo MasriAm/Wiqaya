@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060" font-family="DM Sans, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#334155"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/>
+    </marker>
+    <style>
+      .h { font-weight: 700; font-size: 26px; fill: #0f172a; }
+      .s { font-size: 15px; fill: #475569; }
+      .b { font-weight: 700; font-size: 18px; fill: #0f172a; }
+      .t { font-size: 15px; fill: #334155; }
+      .lab { font-size: 14px; fill: #0f172a; font-weight: 600; }
+      .lab2 { font-size: 13px; fill: #475569; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .key { fill: #ecfdf5; stroke: #0d9488; stroke-width: 2.5; }
+      .gem { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2.5; }
+    </style>
+  </defs>
+  <rect width="1600" height="1060" fill="#f8fafc"/>
+  <text x="40" y="52" font-size="32" font-weight="800" fill="#0f172a">Wiqaya · how it fits together</text>
+  <text x="40" y="82" class="s">Gemma reads labels. The phone decides red, amber or green. Nobody else learns who is allergic to what.</text>
+
+  <!-- PHONES -->
+  <rect x="40" y="110" width="470" height="640" rx="22" fill="#e6f4f1" stroke="#0d9488" stroke-width="2"/>
+  <text x="64" y="148" class="h">1 · The family's phones</text>
+  <text x="64" y="172" class="s">Web app (React + TypeScript), installs to the home screen</text>
+  <g>
+    <rect x="64" y="192" width="134" height="52" rx="12" class="box"/><text x="131" y="224" text-anchor="middle" class="lab">Parent</text>
+    <rect x="208" y="192" width="134" height="52" rx="12" class="box"/><text x="275" y="224" text-anchor="middle" class="lab">Grandparent</text>
+    <rect x="352" y="192" width="134" height="52" rx="12" class="box"/><text x="419" y="224" text-anchor="middle" class="lab">Child</text>
+  </g>
+  <rect x="64" y="262" width="422" height="74" rx="14" class="box"/>
+  <text x="82" y="290" class="b">Camera and barcode</text>
+  <text x="82" y="314" class="t">barcodes read on the phone (zxing-wasm)</text>
+  <rect x="64" y="350" width="422" height="112" rx="14" class="key"/>
+  <text x="82" y="380" class="b">Allergen engine: the decision</text>
+  <text x="82" y="404" class="t">matches the ingredient list against each child's profile</text>
+  <text x="82" y="426" class="t">14 EU allergens + halal, 7 languages, Jordanian names</text>
+  <text x="82" y="448" class="t">red / amber / green, quoting the label's own words</text>
+  <rect x="64" y="476" width="422" height="74" rx="14" class="box"/>
+  <text x="82" y="504" class="b">Profiles and scans, encrypted</text>
+  <text x="82" y="528" class="t">stay on the phone (AES-GCM); never sent to Gemma</text>
+  <rect x="64" y="564" width="422" height="74" rx="14" class="box"/>
+  <text x="82" y="592" class="b">Family circle</text>
+  <text x="82" y="616" class="t">QR invites; end-to-end encrypted messages</text>
+  <rect x="64" y="652" width="422" height="74" rx="14" class="box"/>
+  <text x="82" y="680" class="b">Emergency</text>
+  <text x="82" y="704" class="t">one tap calls 911; doctor's plan card; text to the family</text>
+
+  <!-- SERVER -->
+  <rect x="640" y="110" width="460" height="640" rx="22" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="664" y="148" class="h">2 · Wiqaya server</text>
+  <text x="664" y="172" class="s">Python + FastAPI, open source, runs on a laptop or server</text>
+  <rect x="664" y="192" width="412" height="74" rx="14" class="box"/>
+  <text x="682" y="220" class="b">Photo cleaner</text>
+  <text x="682" y="244" class="t">rebuilds each photo from pixels: no GPS, no device data</text>
+  <rect x="664" y="280" width="412" height="138" rx="14" class="gem"/>
+  <text x="682" y="308" class="b">Label pipeline (talks to Gemma)</text>
+  <text x="682" y="332" class="t">1. Gemma reads the label → JSON lists</text>
+  <text x="682" y="354" class="t">2. reads it again + checks the photo's edges</text>
+  <text x="682" y="376" class="t">   (run together; these can only add caution)</text>
+  <text x="682" y="398" class="t">3. pairs the original list with the Arabic sticker</text>
+  <rect x="664" y="432" width="412" height="74" rx="14" class="box"/>
+  <text x="682" y="460" class="b">Barcode lookup + cache</text>
+  <text x="682" y="484" class="t">Open Food Facts; checked readings kept by barcode</text>
+  <rect x="664" y="520" width="412" height="74" rx="14" class="box"/>
+  <text x="682" y="548" class="b">Menus, research, explanations, pen expiry</text>
+  <text x="682" y="572" class="t">more Gemma jobs, all on product data only</text>
+  <rect x="664" y="608" width="412" height="74" rx="14" class="box"/>
+  <text x="682" y="636" class="b">Family relay (SQLite)</text>
+  <text x="682" y="660" class="t">stores encrypted messages it cannot read</text>
+  <text x="664" y="724" class="s">No accounts · no request logs · photos not stored</text>
+
+  <!-- RIGHT -->
+  <rect x="1230" y="110" width="330" height="250" rx="22" class="gem"/>
+  <text x="1254" y="148" class="h">3 · Gemma 4</text>
+  <text x="1254" y="174" class="s">E4B (4-bit), via Ollama, on our own machine</text>
+  <text x="1254" y="210" class="t">• reads photos into ingredient lists</text>
+  <text x="1254" y="234" class="t">• pairs label and sticker lists</text>
+  <text x="1254" y="258" class="t">• researches unknown ingredients</text>
+  <text x="1254" y="282" class="t">   with tools (cites its sources)</text>
+  <text x="1254" y="306" class="t">• reads menus, explains findings</text>
+  <text x="1254" y="338" class="lab2">JSON schemas · temperature 0</text>
+  <rect x="1230" y="420" width="330" height="110" rx="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="1254" y="456" class="b">Open Food Facts</text>
+  <text x="1254" y="482" class="t">open product database:</text>
+  <text x="1254" y="504" class="t">barcode → ingredients, allergens</text>
+  <rect x="1230" y="580" width="330" height="100" rx="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="1254" y="616" class="b">Web search</text>
+  <text x="1254" y="642" class="t">DuckDuckGo, Wikipedia fallback;</text>
+  <text x="1254" y="664" class="t">queries about ingredients only</text>
+
+  <!-- ARROWS phone <-> server -->
+  <line x1="510" y1="300" x2="660" y2="300" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="520" y="284" class="lab">photos, barcode</text>
+  <text x="520" y="324" class="lab2">no names,</text><text x="520" y="342" class="lab2">no allergies</text>
+  <line x1="660" y1="400" x2="510" y2="400" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="520" y="388" class="lab">ingredients</text>
+  <text x="520" y="424" class="lab2">as JSON</text>
+  <line x1="510" y1="645" x2="660" y2="645" stroke="#334155" stroke-width="2.5" stroke-dasharray="6 5" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text x="520" y="630" class="lab">encrypted</text>
+  <!-- server -> gemma -->
+  <path d="M1076 330 C1150 330 1160 230 1226 230" fill="none" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#g)"/>
+  <text x="1112" y="206" class="lab">photo → JSON</text>
+  <line x1="1076" y1="468" x2="1226" y2="468" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="1110" y="456" class="lab">barcode</text>
+  <path d="M1395 360 L1395 416" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <path d="M1545 360 C1590 450 1590 560 1545 600" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <text x="1404" y="398" class="lab2">tool calls</text>
+
+  <!-- DECISION STRIP -->
+  <rect x="40" y="790" width="1520" height="240" rx="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="64" y="830" class="h">One scan, step by step</text>
+  <g font-size="15">
+    <rect x="64" y="852" width="220" height="110" rx="14" class="box"/>
+    <text x="80" y="882" class="b">1. Scan</text>
+    <text x="80" y="908" class="t">barcode, or a photo of</text>
+    <text x="80" y="930" class="t">the ingredients (+ sticker)</text>
+    <rect x="314" y="852" width="250" height="110" rx="14" class="gem"/>
+    <text x="330" y="882" class="b">2. Gemma reads</text>
+    <text x="330" y="908" class="t">the list, "contains" and</text>
+    <text x="330" y="930" class="t">"may contain" lines, as JSON</text>
+    <rect x="594" y="852" width="250" height="110" rx="14" class="box"/>
+    <text x="610" y="882" class="b">3. Code double-checks</text>
+    <text x="610" y="908" class="t">second reading agrees?</text>
+    <text x="610" y="930" class="t">list cut off at the edge?</text>
+    <rect x="874" y="852" width="290" height="110" rx="14" class="key"/>
+    <text x="890" y="882" class="b">4. Phone decides, per child</text>
+    <text x="890" y="908" class="t">matches every ingredient</text>
+    <text x="890" y="930" class="t">against each child's profile</text>
+    <rect x="1194" y="852" width="342" height="110" rx="14" class="box"/>
+    <text x="1210" y="882" class="b">5. Result</text>
+    <rect x="1210" y="898" width="90" height="30" rx="8" fill="#fdecec"/><text x="1255" y="919" text-anchor="middle" font-weight="700" fill="#c72d2d">Red</text>
+    <rect x="1310" y="898" width="100" height="30" rx="8" fill="#fff3dd"/><text x="1360" y="919" text-anchor="middle" font-weight="700" fill="#b67210">Amber</text>
+    <rect x="1420" y="898" width="100" height="30" rx="8" fill="#eaf6ec"/><text x="1470" y="919" text-anchor="middle" font-weight="700" fill="#208343">Green</text>
+    <text x="1210" y="950" class="lab2">with the label's words quoted</text>
+  </g>
+  <line x1="284" y1="907" x2="310" y2="907" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="564" y1="907" x2="590" y2="907" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="844" y1="907" x2="870" y2="907" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="1164" y1="907" x2="1190" y2="907" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="64" y="1002" class="s">Rule: Gemma's output can only add caution. Red is never overridden. Green needs a whole, readable list with nothing the child avoids.</text>
+</svg>
